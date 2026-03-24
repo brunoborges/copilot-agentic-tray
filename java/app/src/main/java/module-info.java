@@ -4,6 +4,9 @@ module com.github.copilot.tray {
     requires javafx.controls;
     requires javafx.fxml;
     requires javafx.graphics;
+    requires javafx.web;
+
+    requires eu.hansolo.tilesfx;
 
     requires com.fasterxml.jackson.databind;
     requires com.fasterxml.jackson.annotation;

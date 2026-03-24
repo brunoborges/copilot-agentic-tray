@@ -34,6 +34,9 @@ public class SettingsWindow {
     // Track currently selected session for actions
     private SessionSnapshot selectedSession;
 
+    // Usage dashboard
+    private UsageDashboard usageDashboard;
+
     // Preferences tab controls
     private TextField cliPathField;
     private Spinner<Integer> pollIntervalSpinner;
@@ -87,7 +90,12 @@ public class SettingsWindow {
      */
     public void onSessionChange(Collection<SessionSnapshot> sessions) {
         if (stage != null && stage.isShowing()) {
-            Platform.runLater(() -> refreshSessionTree(sessions));
+            Platform.runLater(() -> {
+                refreshSessionTree(sessions);
+                if (usageDashboard != null) {
+                    usageDashboard.refresh(sessions);
+                }
+            });
         }
     }
 
@@ -289,39 +297,18 @@ public class SettingsWindow {
         return label;
     }
 
-    // --- Usage Tab ---
+    // --- Usage Tab (TilesFX Dashboard) ---
 
     private Tab createUsageTab() {
-        var content = new VBox(10);
-        content.setPadding(new Insets(15));
-        content.getChildren().add(new Label("Usage metrics are updated in real-time from active sessions."));
+        usageDashboard = new UsageDashboard(sessionManager);
+        usageDashboard.refresh(sessionManager.getSessions());
 
-        // Placeholder — will be enriched in later phases
-        var table = new TextArea();
-        table.setEditable(false);
-        table.setPrefRowCount(20);
-        content.getChildren().add(table);
-        VBox.setVgrow(table, Priority.ALWAYS);
+        var scrollPane = new ScrollPane(usageDashboard);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setFitToHeight(true);
+        scrollPane.setStyle("-fx-background: #1a1a2e;");
 
-        // Populate on tab select
-        var tab = new Tab("Usage", content);
-        tab.setOnSelectionChanged(e -> {
-            if (tab.isSelected()) {
-                var sb = new StringBuilder();
-                sb.append(String.format("%-30s %-10s %-15s %-10s%n", "Session", "Status", "Tokens", "Usage%"));
-                sb.append("-".repeat(70)).append("\n");
-                for (var session : sessionManager.getSessions()) {
-                    sb.append(String.format("%-30s %-10s %6d/%-6d %5.1f%%%n",
-                            truncate(session.name(), 30),
-                            session.status(),
-                            session.usage().currentTokens(),
-                            session.usage().tokenLimit(),
-                            session.usage().tokenUsagePercent()));
-                }
-                table.setText(sb.toString());
-            }
-        });
-        return tab;
+        return new Tab("Usage", scrollPane);
     }
 
     // --- Preferences Tab ---
@@ -411,9 +398,5 @@ public class SettingsWindow {
             }
         });
         return link;
-    }
-
-    private static String truncate(String s, int maxLen) {
-        return s.length() > maxLen ? s.substring(0, maxLen - 3) + "..." : s;
     }
 }
