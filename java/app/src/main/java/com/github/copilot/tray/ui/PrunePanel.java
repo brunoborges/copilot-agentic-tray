@@ -194,10 +194,12 @@ public class PrunePanel extends VBox {
 
         // Actions column
         var actionsCol = new TableColumn<PruneCandidate, Void>("Actions");
-        actionsCol.setPrefWidth(80);
+        actionsCol.setPrefWidth(140);
         actionsCol.setSortable(false);
         actionsCol.setCellFactory(col -> new TableCell<>() {
             private final Button resumeBtn = new Button("Resume");
+            private final Button deleteBtn = new Button("Delete");
+            private final HBox box = new HBox(4, resumeBtn, deleteBtn);
             {
                 resumeBtn.setStyle("-fx-font-size: 11px; -fx-padding: 2 6;");
                 resumeBtn.setOnAction(e -> {
@@ -206,12 +208,20 @@ public class PrunePanel extends VBox {
                         resumeHandler.accept(item.sessionId());
                     }
                 });
+                deleteBtn.setStyle("-fx-font-size: 11px; -fx-padding: 2 6; -fx-text-fill: #cc3333;");
+                deleteBtn.setOnAction(e -> {
+                    var item = getTableRow().getItem();
+                    if (item != null) {
+                        deleteSingleSession(item);
+                    }
+                });
+                box.setAlignment(Pos.CENTER);
             }
 
             @Override
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
-                setGraphic(empty ? null : resumeBtn);
+                setGraphic(empty ? null : box);
             }
         });
 
@@ -309,6 +319,20 @@ public class PrunePanel extends VBox {
     }
 
     // --- Prune ---
+
+    private void deleteSingleSession(PruneCandidate candidate) {
+        var alert = new Alert(Alert.AlertType.CONFIRMATION,
+                "Delete session '" + candidate.firstUserMessage() + "'?\n("
+                        + candidate.diskSizeFormatted() + ")",
+                ButtonType.YES, ButtonType.NO);
+        alert.setHeaderText(null);
+        alert.setTitle("Delete Session");
+        alert.showAndWait().ifPresent(bt -> {
+            if (bt == ButtonType.YES) {
+                executePrune(List.of(candidate));
+            }
+        });
+    }
 
     private void confirmAndPrune() {
         var selected = getSelectedCandidates();
