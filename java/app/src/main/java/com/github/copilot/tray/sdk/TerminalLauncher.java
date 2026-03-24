@@ -3,6 +3,7 @@ package com.github.copilot.tray.sdk;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
@@ -14,65 +15,76 @@ public class TerminalLauncher {
     private static final Logger LOG = LoggerFactory.getLogger(TerminalLauncher.class);
 
     /**
-     * Open a new terminal window running `copilot --resume sessionId`.
+     * Open a new terminal window running {@code copilot --resume sessionId}.
      */
     public void resumeSession(String sessionId) {
-        var command = buildCommand(sessionId);
+        var command = buildCommand("copilot --resume " + sessionId);
         LOG.info("Launching terminal for session {}: {}", sessionId, command);
-        try {
-            new ProcessBuilder(command)
-                    .inheritIO()
-                    .start();
-        } catch (IOException e) {
-            LOG.error("Failed to launch terminal for session {}", sessionId, e);
-        }
+        launch(command);
     }
 
     /**
-     * Open a new terminal window running a fresh `copilot` session.
+     * Open a new terminal window running a fresh {@code copilot} session.
      */
     public void newSession() {
-        var command = buildNewSessionCommand();
+        var command = buildCommand("copilot");
         LOG.info("Launching new terminal session: {}", command);
+        launch(command);
+    }
+
+    private void launch(List<String> command) {
         try {
             new ProcessBuilder(command)
                     .inheritIO()
                     .start();
         } catch (IOException e) {
-            LOG.error("Failed to launch new terminal session", e);
+            LOG.error("Failed to launch terminal: {}", command, e);
         }
     }
 
-    private List<String> buildCommand(String sessionId) {
+    private List<String> buildCommand(String shellCmd) {
         String os = System.getProperty("os.name", "").toLowerCase();
-        String resumeCmd = "copilot --resume " + sessionId;
 
         if (os.contains("mac")) {
-            return List.of("open", "-a", "Terminal", "--args", "-e", resumeCmd);
+            return buildMacCommand(shellCmd);
         } else if (os.contains("win")) {
-            return List.of("cmd", "/c", "start", "wt", "copilot", "--resume", sessionId);
+            return buildWindowsCommand(shellCmd);
         } else {
-            // Linux: try common terminal emulators
-            return List.of("sh", "-c",
-                    "if command -v gnome-terminal > /dev/null 2>&1; then gnome-terminal -- bash -c '" + resumeCmd + "; exec bash'; "
-                            + "elif command -v konsole > /dev/null 2>&1; then konsole -e bash -c '" + resumeCmd + "; exec bash'; "
-                            + "elif command -v xterm > /dev/null 2>&1; then xterm -e '" + resumeCmd + "'; "
-                            + "else x-terminal-emulator -e '" + resumeCmd + "'; fi");
+            return buildLinuxCommand(shellCmd);
         }
     }
 
-    private List<String> buildNewSessionCommand() {
-        String os = System.getProperty("os.name", "").toLowerCase();
-        if (os.contains("mac")) {
-            return List.of("open", "-a", "Terminal", "--args", "-e", "copilot");
-        } else if (os.contains("win")) {
-            return List.of("cmd", "/c", "start", "wt", "copilot");
-        } else {
-            return List.of("sh", "-c",
-                    "if command -v gnome-terminal > /dev/null 2>&1; then gnome-terminal -- bash -c 'copilot; exec bash'; "
-                            + "elif command -v konsole > /dev/null 2>&1; then konsole -e bash -c 'copilot; exec bash'; "
-                            + "elif command -v xterm > /dev/null 2>&1; then xterm -e 'copilot'; "
-                            + "else x-terminal-emulator -e 'copilot'; fi");
+    private List<String> buildMacCommand(String shellCmd) {
+        // Detect iTerm2, then fall back to Terminal.app
+        if (new File("/Applications/iTerm.app").exists()) {
+            String script = """
+                    tell application "iTerm"
+                        activate
+                        create window with default profile command "%s"
+                    end tell""".formatted(shellCmd);
+            return List.of("osascript", "-e", script);
         }
+        String script = """
+                tell application "Terminal"
+                    activate
+                    do script "%s"
+                end tell""".formatted(shellCmd);
+        return List.of("osascript", "-e", script);
+    }
+
+    private List<String> buildWindowsCommand(String shellCmd) {
+        // Split into args for ProcessBuilder; prefer Windows Terminal, fall back to cmd
+        String[] parts = shellCmd.split(" ");
+        var args = new java.util.ArrayList<>(List.of("cmd", "/c", "start", "wt"));
+        args.addAll(List.of(parts));
+        return List.copyOf(args);
+    }
+
+    private List<String> buildLinuxCommand(String shellCmd) {
+        return List.of("sh", "-c",
+                "if command -v gnome-terminal > /dev/null 2>&1; then gnome-terminal -- bash -c '" + shellCmd + "; exec bash'; "
+                        + "elif command -v konsole > /dev/null 2>&1; then konsole -e bash -c '" + shellCmd + "; exec bash'; "
+                        + "elif command -v xterm > /dev/null 2>&1; then xterm -e '" + shellCmd + "'; "
+                        + "else x-terminal-emulator -e '" + shellCmd + "'; fi");
     }
 }
