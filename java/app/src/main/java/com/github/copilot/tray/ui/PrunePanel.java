@@ -432,13 +432,15 @@ public class PrunePanel extends VBox {
     /** CheckBox cell bound to the per-row selection property. */
     private class CheckBoxCell extends TableCell<PruneCandidate, Boolean> {
         private final CheckBox checkBox = new CheckBox();
+        private String boundSessionId;
+        private javafx.beans.value.ChangeListener<Boolean> externalListener;
+        private boolean updating; // guard against feedback loops
 
         CheckBoxCell() {
             setAlignment(Pos.CENTER);
             checkBox.selectedProperty().addListener((obs, old, val) -> {
-                var item = getTableRow() != null ? getTableRow().getItem() : null;
-                if (item != null) {
-                    getSelectionProperty(item.sessionId()).set(val);
+                if (!updating && boundSessionId != null) {
+                    getSelectionProperty(boundSessionId).set(val);
                 }
             });
         }
@@ -446,18 +448,44 @@ public class PrunePanel extends VBox {
         @Override
         protected void updateItem(Boolean item, boolean empty) {
             super.updateItem(item, empty);
-            if (empty) {
+            if (empty || getTableRow() == null || getTableRow().getItem() == null) {
                 setGraphic(null);
-            } else {
-                var candidate = getTableRow().getItem();
-                if (candidate != null) {
-                    checkBox.setSelected(getSelectionProperty(candidate.sessionId()).get());
-                    // Bind bidirectionally so external changes update the checkbox
-                    getSelectionProperty(candidate.sessionId()).addListener(
-                            (obs, old, val) -> checkBox.setSelected(val));
-                }
-                setGraphic(checkBox);
+                unbind();
+                return;
             }
+
+            var candidate = getTableRow().getItem();
+            var sessionId = candidate.sessionId();
+
+            // Only rebind if the row changed
+            if (!sessionId.equals(boundSessionId)) {
+                unbind();
+                boundSessionId = sessionId;
+                var prop = getSelectionProperty(sessionId);
+
+                updating = true;
+                checkBox.setSelected(prop.get());
+                updating = false;
+
+                externalListener = (obs, old, val) -> {
+                    updating = true;
+                    checkBox.setSelected(val);
+                    updating = false;
+                };
+                prop.addListener(externalListener);
+            }
+            setGraphic(checkBox);
+        }
+
+        private void unbind() {
+            if (boundSessionId != null && externalListener != null) {
+                var prop = selectionMap.get(boundSessionId);
+                if (prop != null) {
+                    prop.removeListener(externalListener);
+                }
+            }
+            boundSessionId = null;
+            externalListener = null;
         }
     }
 }
