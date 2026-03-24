@@ -36,6 +36,9 @@ public class PrunePanel extends VBox {
     private final Button pruneBtn = new Button("Delete Selected");
     private final ProgressIndicator spinner = new ProgressIndicator();
 
+    // Shift-click range selection: track last toggled row index
+    private int lastClickedIndex = -1;
+
     // Selection buttons
     private final Button deselectAllBtn = new Button("Deselect All");
     private final Button selectEmptyBtn = new Button("Select Empty");
@@ -429,7 +432,7 @@ public class PrunePanel extends VBox {
         return bytes + " B";
     }
 
-    /** CheckBox cell bound to the per-row selection property. */
+    /** CheckBox cell bound to the per-row selection property, with shift-click range support. */
     private class CheckBoxCell extends TableCell<PruneCandidate, Boolean> {
         private final CheckBox checkBox = new CheckBox();
         private String boundSessionId;
@@ -438,6 +441,29 @@ public class PrunePanel extends VBox {
 
         CheckBoxCell() {
             setAlignment(Pos.CENTER);
+
+            // Intercept mouse clicks on the checkbox for shift-click range selection
+            checkBox.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_PRESSED, event -> {
+                if (boundSessionId == null) return;
+                int myIndex = getIndex();
+                boolean newValue = !checkBox.isSelected(); // what the toggle will become
+
+                if (event.isShiftDown() && lastClickedIndex >= 0 && lastClickedIndex != myIndex) {
+                    // Shift-click: select/deselect the range
+                    event.consume(); // prevent default toggle
+                    int lo = Math.min(lastClickedIndex, myIndex);
+                    int hi = Math.max(lastClickedIndex, myIndex);
+                    var items = table.getItems();
+                    for (int i = lo; i <= hi && i < items.size(); i++) {
+                        getSelectionProperty(items.get(i).sessionId()).set(newValue);
+                    }
+                    lastClickedIndex = myIndex;
+                } else {
+                    // Normal click — let the default toggle happen
+                    lastClickedIndex = myIndex;
+                }
+            });
+
             checkBox.selectedProperty().addListener((obs, old, val) -> {
                 if (!updating && boundSessionId != null) {
                     getSelectionProperty(boundSessionId).set(val);
