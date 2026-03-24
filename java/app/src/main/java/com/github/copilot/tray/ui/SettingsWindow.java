@@ -106,6 +106,7 @@ public class SettingsWindow {
         tabPane.getTabs().addAll(
                 createSessionsTab(),
                 createUsageTab(),
+                createPruneTab(),
                 createPreferencesTab(),
                 createAboutTab()
         );
@@ -309,6 +310,13 @@ public class SettingsWindow {
         scrollPane.setStyle("-fx-background: #1a1a2e;");
 
         return new Tab("Usage", scrollPane);
+    }
+
+    // --- Prune Tab ---
+
+    private Tab createPruneTab() {
+        var prunePanel = new PrunePanel();
+        return new Tab("Prune", prunePanel);
     }
 
     // --- Preferences Tab ---
