@@ -14,7 +14,7 @@ public class TerminalLauncher {
     private static final Logger LOG = LoggerFactory.getLogger(TerminalLauncher.class);
 
     /**
-     * Open a new terminal window running `copilot /resume sessionId`.
+     * Open a new terminal window running `copilot --resume sessionId`.
      */
     public void resumeSession(String sessionId) {
         var command = buildCommand(sessionId);
@@ -45,12 +45,12 @@ public class TerminalLauncher {
 
     private List<String> buildCommand(String sessionId) {
         String os = System.getProperty("os.name", "").toLowerCase();
-        String resumeCmd = "copilot /resume " + sessionId;
+        String resumeCmd = "copilot --resume " + sessionId;
 
         if (os.contains("mac")) {
             return List.of("open", "-a", "Terminal", "--args", "-e", resumeCmd);
         } else if (os.contains("win")) {
-            return List.of("cmd", "/c", "start", "wt", "copilot", "/resume", sessionId);
+            return List.of("cmd", "/c", "start", "wt", "copilot", "--resume", sessionId);
         } else {
             // Linux: try common terminal emulators
             return List.of("sh", "-c",
