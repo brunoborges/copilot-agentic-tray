@@ -110,14 +110,23 @@ public class SessionManager {
     /**
      * Populate sessions from an initial list (e.g. from listSessions() at startup).
      * Sessions whose last activity is older than 12 hours are marked ARCHIVED.
+     * Reads events.jsonl from disk to populate usage data (message counts, estimated tokens).
      */
     public void populateFromMetadata(String id, String name, String model,
                                      String workingDirectory, Instant lastModified,
                                      boolean remote) {
         if (!sessions.containsKey(id)) {
-            var snapshot = SessionSnapshot.initial(id, model, workingDirectory)
-                    .withName(name)
-                    .withRemote(remote);
+            // Read disk stats for message counts and token estimates
+            var diskStats = SessionDiskReader.readStats(id);
+            var resolvedDir = workingDirectory != null ? workingDirectory
+                    : diskStats.workingDirectory();
+            var resolvedName = (name != null && !name.equals(id)) ? name
+                    : (!diskStats.firstUserMessage().isEmpty() ? diskStats.firstUserMessage() : id);
+
+            var snapshot = SessionSnapshot.initial(id, model, resolvedDir)
+                    .withName(resolvedName)
+                    .withRemote(remote)
+                    .withUsage(diskStats.toUsageSnapshot());
             if (lastModified != null) {
                 snapshot = snapshot.withLastActivity(lastModified);
                 if (lastModified.isBefore(Instant.now().minus(ACTIVE_THRESHOLD))) {
