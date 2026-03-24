@@ -15,8 +15,9 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
 /**
  * UI panel for scanning and pruning low-value sessions.
@@ -25,47 +26,52 @@ import java.util.concurrent.CompletableFuture;
 public class PrunePanel extends VBox {
 
     private final SessionPruner pruner;
+    private final Consumer<String> resumeHandler;
 
     private final TableView<PruneCandidate> table = new TableView<>();
     private final CheckBox includeTrivialCb = new CheckBox("Include trivial sessions (≤5 messages)");
     private final Label statusLabel = new Label("Click 'Scan' to find pruneable sessions.");
     private final Label summaryLabel = new Label("");
     private final Button scanBtn = new Button("Scan for Pruneable Sessions");
-    private final Button pruneBtn = new Button("Delete Selected Sessions");
-    private final Button selectAllBtn = new Button("Select All");
+    private final Button pruneBtn = new Button("Delete Selected");
     private final ProgressIndicator spinner = new ProgressIndicator();
 
+    // Selection buttons
+    private final Button deselectAllBtn = new Button("Deselect All");
+    private final Button selectEmptyBtn = new Button("Select Empty");
+    private final Button selectAbandonedBtn = new Button("Select Abandoned");
+    private final Button selectTrivialBtn = new Button("Select Trivial");
+    private final Button selectAllBtn = new Button("Select All");
+    private final Button infoBtn = new Button("ℹ Categories");
+
+    // Per-row selection state keyed by sessionId
+    private final Map<String, SimpleBooleanProperty> selectionMap = new LinkedHashMap<>();
     private List<PruneCandidate> candidates = List.of();
 
     public PrunePanel() {
-        this(new SessionPruner());
+        this(new SessionPruner(), id -> {});
     }
 
-    public PrunePanel(SessionPruner pruner) {
+    public PrunePanel(SessionPruner pruner, Consumer<String> resumeHandler) {
         this.pruner = pruner;
+        this.resumeHandler = resumeHandler;
 
         setSpacing(10);
         setPadding(new Insets(12));
 
         buildTable();
 
-        // Controls
+        // Scan controls
         includeTrivialCb.setSelected(true);
-
         scanBtn.setOnAction(e -> runScan());
         scanBtn.setStyle("-fx-font-weight: bold;");
-
-        pruneBtn.setOnAction(e -> confirmAndPrune());
-        pruneBtn.setStyle("-fx-text-fill: #cc3333; -fx-font-weight: bold;");
-        pruneBtn.setDisable(true);
-
-        selectAllBtn.setOnAction(e -> toggleSelectAll());
-        selectAllBtn.setDisable(true);
 
         spinner.setVisible(false);
         spinner.setPrefSize(20, 20);
 
-        var topRow = new HBox(10, scanBtn, includeTrivialCb, spinner);
+        infoBtn.setOnAction(e -> showCategoryInfo());
+
+        var topRow = new HBox(10, scanBtn, includeTrivialCb, infoBtn, spinner);
         topRow.setAlignment(Pos.CENTER_LEFT);
 
         summaryLabel.setTextFill(Color.web("#888888"));
@@ -74,30 +80,69 @@ public class PrunePanel extends VBox {
         statusLabel.setWrapText(true);
         statusLabel.setTextFill(Color.web("#cccccc"));
 
-        var bottomRow = new HBox(10, selectAllBtn, pruneBtn, statusLabel);
+        // Selection controls
+        deselectAllBtn.setOnAction(e -> setSelectionByCategory(null, false));
+        selectAllBtn.setOnAction(e -> setSelectionByCategory(null, true));
+        selectEmptyBtn.setOnAction(e -> { clearAllSelections(); setSelectionByCategory(PruneCategory.EMPTY, true); });
+        selectAbandonedBtn.setOnAction(e -> { clearAllSelections(); setSelectionByCategory(PruneCategory.ABANDONED, true); });
+        selectTrivialBtn.setOnAction(e -> { clearAllSelections(); setSelectionByCategory(PruneCategory.TRIVIAL, true); });
+
+        var selectionRow = new HBox(8, deselectAllBtn, selectAllBtn,
+                new Separator(javafx.geometry.Orientation.VERTICAL),
+                selectEmptyBtn, selectAbandonedBtn, selectTrivialBtn);
+        selectionRow.setAlignment(Pos.CENTER_LEFT);
+        setSelectionControlsDisabled(true);
+
+        // Delete button
+        pruneBtn.setOnAction(e -> confirmAndPrune());
+        pruneBtn.setStyle("-fx-text-fill: #cc3333; -fx-font-weight: bold;");
+        pruneBtn.setDisable(true);
+
+        var bottomRow = new HBox(10, pruneBtn, statusLabel);
         bottomRow.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(statusLabel, Priority.ALWAYS);
 
-        getChildren().addAll(topRow, summaryLabel, table, bottomRow);
+        getChildren().addAll(topRow, summaryLabel, selectionRow, table, bottomRow);
         VBox.setVgrow(table, Priority.ALWAYS);
     }
 
     @SuppressWarnings("unchecked")
     private void buildTable() {
-        // Selection checkboxes
+        // Checkbox column
         var selectCol = new TableColumn<PruneCandidate, Boolean>("✓");
-        selectCol.setCellValueFactory(cd -> {
-            var prop = new SimpleBooleanProperty(true);
-            prop.addListener((obs, old, val) -> updatePruneButton());
-            return prop;
-        });
-        selectCol.setCellFactory(col -> new CheckBoxTableCell());
+        selectCol.setCellValueFactory(cd -> getSelectionProperty(cd.getValue().sessionId()));
+        selectCol.setCellFactory(col -> new CheckBoxCell());
         selectCol.setPrefWidth(35);
+        selectCol.setSortable(false);
+
+        // Session ID
+        var idCol = new TableColumn<PruneCandidate, String>("Session ID");
+        idCol.setCellValueFactory(cd -> new SimpleStringProperty(
+                cd.getValue().sessionId().substring(0, Math.min(8, cd.getValue().sessionId().length())) + "…"));
+        idCol.setPrefWidth(80);
+        idCol.setCellFactory(col -> {
+            var cell = new TableCell<PruneCandidate, String>() {
+                @Override
+                protected void updateItem(String item, boolean empty) {
+                    super.updateItem(item, empty);
+                    setText(empty ? null : item);
+                    if (!empty) {
+                        // Show full ID on hover
+                        var candidate = getTableRow().getItem();
+                        if (candidate != null) {
+                            setTooltip(new Tooltip(candidate.sessionId()));
+                        }
+                    }
+                }
+            };
+            cell.setStyle("-fx-font-family: monospace; -fx-font-size: 11px;");
+            return cell;
+        });
 
         // Category
         var categoryCol = new TableColumn<PruneCandidate, String>("Category");
         categoryCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().category().name()));
-        categoryCol.setPrefWidth(100);
+        categoryCol.setPrefWidth(90);
         categoryCol.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(String item, boolean empty) {
@@ -108,51 +153,121 @@ public class PrunePanel extends VBox {
                 } else {
                     setText(item);
                     setStyle(switch (PruneCategory.valueOf(item)) {
-                        case EMPTY -> "-fx-text-fill: #ff6666;";
-                        case ABANDONED -> "-fx-text-fill: #ffaa44;";
+                        case EMPTY -> "-fx-text-fill: #ff6666; -fx-font-weight: bold;";
+                        case ABANDONED -> "-fx-text-fill: #ffaa44; -fx-font-weight: bold;";
                         case TRIVIAL -> "-fx-text-fill: #aaaaaa;";
                     });
                 }
             }
         });
 
-        // First user message (title)
+        // First user message
         var titleCol = new TableColumn<PruneCandidate, String>("First Message");
         titleCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().firstUserMessage()));
-        titleCol.setPrefWidth(250);
+        titleCol.setPrefWidth(220);
 
         // Age
         var ageCol = new TableColumn<PruneCandidate, String>("Age");
         ageCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().age()));
-        ageCol.setPrefWidth(70);
+        ageCol.setPrefWidth(65);
 
         // Size
         var sizeCol = new TableColumn<PruneCandidate, String>("Size");
         sizeCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().diskSizeFormatted()));
-        sizeCol.setPrefWidth(70);
+        sizeCol.setPrefWidth(65);
 
-        // User messages
-        var userMsgCol = new TableColumn<PruneCandidate, String>("User Msgs");
+        // User / Assistant messages
+        var userMsgCol = new TableColumn<PruneCandidate, String>("Usr");
         userMsgCol.setCellValueFactory(cd ->
                 new SimpleStringProperty(String.valueOf(cd.getValue().userMessageCount())));
-        userMsgCol.setPrefWidth(70);
+        userMsgCol.setPrefWidth(40);
 
-        // Assistant messages
-        var assistMsgCol = new TableColumn<PruneCandidate, String>("Asst Msgs");
+        var assistMsgCol = new TableColumn<PruneCandidate, String>("Ast");
         assistMsgCol.setCellValueFactory(cd ->
                 new SimpleStringProperty(String.valueOf(cd.getValue().assistantMessageCount())));
-        assistMsgCol.setPrefWidth(70);
+        assistMsgCol.setPrefWidth(40);
 
         // Working directory
         var dirCol = new TableColumn<PruneCandidate, String>("Directory");
         dirCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().workingDirectory()));
-        dirCol.setPrefWidth(200);
+        dirCol.setPrefWidth(160);
 
-        table.getColumns().addAll(selectCol, categoryCol, titleCol, ageCol, sizeCol,
-                userMsgCol, assistMsgCol, dirCol);
+        // Actions column
+        var actionsCol = new TableColumn<PruneCandidate, Void>("Actions");
+        actionsCol.setPrefWidth(80);
+        actionsCol.setSortable(false);
+        actionsCol.setCellFactory(col -> new TableCell<>() {
+            private final Button resumeBtn = new Button("Resume");
+            {
+                resumeBtn.setStyle("-fx-font-size: 11px; -fx-padding: 2 6;");
+                resumeBtn.setOnAction(e -> {
+                    var item = getTableRow().getItem();
+                    if (item != null) {
+                        resumeHandler.accept(item.sessionId());
+                    }
+                });
+            }
+
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                setGraphic(empty ? null : resumeBtn);
+            }
+        });
+
+        table.getColumns().addAll(selectCol, idCol, categoryCol, titleCol, ageCol,
+                sizeCol, userMsgCol, assistMsgCol, dirCol, actionsCol);
         table.setPlaceholder(new Label("No pruneable sessions found. Click 'Scan' to search."));
-        table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
     }
+
+    // --- Selection management ---
+
+    private SimpleBooleanProperty getSelectionProperty(String sessionId) {
+        return selectionMap.computeIfAbsent(sessionId, id -> {
+            var prop = new SimpleBooleanProperty(false);
+            prop.addListener((obs, old, val) -> updatePruneButton());
+            return prop;
+        });
+    }
+
+    private void clearAllSelections() {
+        selectionMap.values().forEach(p -> p.set(false));
+    }
+
+    private void setSelectionByCategory(PruneCategory category, boolean selected) {
+        for (var candidate : candidates) {
+            if (category == null || candidate.category() == category) {
+                getSelectionProperty(candidate.sessionId()).set(selected);
+            }
+        }
+    }
+
+    private List<PruneCandidate> getSelectedCandidates() {
+        return candidates.stream()
+                .filter(c -> getSelectionProperty(c.sessionId()).get())
+                .toList();
+    }
+
+    private void setSelectionControlsDisabled(boolean disabled) {
+        deselectAllBtn.setDisable(disabled);
+        selectAllBtn.setDisable(disabled);
+        selectEmptyBtn.setDisable(disabled);
+        selectAbandonedBtn.setDisable(disabled);
+        selectTrivialBtn.setDisable(disabled);
+    }
+
+    private void updatePruneButton() {
+        long selected = getSelectedCandidates().size();
+        pruneBtn.setDisable(selected == 0);
+        if (selected > 0) {
+            long size = getSelectedCandidates().stream().mapToLong(PruneCandidate::diskSizeBytes).sum();
+            pruneBtn.setText("Delete " + selected + " Selected (" + formatSize(size) + ")");
+        } else {
+            pruneBtn.setText("Delete Selected");
+        }
+    }
+
+    // --- Scan ---
 
     private void runScan() {
         scanBtn.setDisable(true);
@@ -160,7 +275,8 @@ public class PrunePanel extends VBox {
         statusLabel.setText("Scanning sessions...");
         summaryLabel.setText("");
         pruneBtn.setDisable(true);
-        selectAllBtn.setDisable(true);
+        setSelectionControlsDisabled(true);
+        selectionMap.clear();
 
         boolean includeTrivial = includeTrivialCb.isSelected();
 
@@ -183,19 +299,19 @@ public class PrunePanel extends VBox {
                         long trivialCount = candidates.stream()
                                 .filter(c -> c.category() == PruneCategory.TRIVIAL).count();
 
-                        summaryLabel.setText("Found %d pruneable sessions — %s total disk space  |  %d empty, %d abandoned, %d trivial"
+                        summaryLabel.setText("Found %d sessions — %s total  |  %d empty, %d abandoned, %d trivial"
                                 .formatted(candidates.size(), formatSize(totalSize),
                                         emptyCount, abandonedCount, trivialCount));
-                        statusLabel.setText("Review the sessions below, then click 'Delete Selected' to prune.");
-                        pruneBtn.setDisable(false);
-                        selectAllBtn.setDisable(false);
+                        statusLabel.setText("Use the selection buttons to pick sessions, then delete.");
+                        setSelectionControlsDisabled(false);
                     }
                 }));
     }
 
-    private void confirmAndPrune() {
-        var selected = candidates.stream().toList(); // all are selected by default via checkbox
+    // --- Prune ---
 
+    private void confirmAndPrune() {
+        var selected = getSelectedCandidates();
         if (selected.isEmpty()) {
             statusLabel.setText("No sessions selected.");
             return;
@@ -229,7 +345,8 @@ public class PrunePanel extends VBox {
                     spinner.setVisible(false);
                     scanBtn.setDisable(false);
 
-                    // Remove deleted from the table
+                    // Remove deleted from table and selection map
+                    result.deletedSessionIds().forEach(selectionMap::remove);
                     var remaining = candidates.stream()
                             .filter(c -> !result.deletedSessionIds().contains(c.sessionId()))
                             .toList();
@@ -244,25 +361,43 @@ public class PrunePanel extends VBox {
                     }
                     statusLabel.setText(sb.toString());
                     summaryLabel.setText("");
+                    updatePruneButton();
 
                     if (!remaining.isEmpty()) {
-                        pruneBtn.setDisable(false);
+                        setSelectionControlsDisabled(false);
                     }
                 }));
     }
 
-    private void toggleSelectAll() {
-        // Simple toggle: if table has items, select/deselect all
-        if (table.getSelectionModel().getSelectedItems().size() == table.getItems().size()) {
-            table.getSelectionModel().clearSelection();
-        } else {
-            table.getSelectionModel().selectAll();
-        }
+    // --- Info dialog ---
+
+    private void showCategoryInfo() {
+        var alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Prune Categories");
+        alert.setHeaderText("How sessions are classified for pruning");
+        alert.setContentText("""
+                EMPTY (red)
+                Sessions with no events.jsonl file, or no user messages at all. \
+                These were likely created by accident or immediately abandoned.
+
+                ABANDONED (orange)
+                Sessions where the user sent a message but no assistant response \
+                was ever generated. The session was started but never completed \
+                its first exchange.
+
+                TRIVIAL (gray)
+                Sessions with ≤5 user messages and some assistant responses. \
+                These are very short exchanges that typically hold little value \
+                for future reference. This category is optional and can be \
+                excluded using the checkbox.
+
+                Sessions with more than 5 user messages and at least one \
+                assistant response are considered valuable and never flagged.""");
+        alert.getDialogPane().setPrefWidth(500);
+        alert.showAndWait();
     }
 
-    private void updatePruneButton() {
-        pruneBtn.setDisable(candidates.isEmpty());
-    }
+    // --- Utilities ---
 
     private static String formatSize(long bytes) {
         if (bytes >= 1_048_576) return String.format("%.1f MB", bytes / 1_048_576.0);
@@ -270,13 +405,18 @@ public class PrunePanel extends VBox {
         return bytes + " B";
     }
 
-    /** Custom CheckBox cell for the selection column. */
-    private static class CheckBoxTableCell extends TableCell<PruneCandidate, Boolean> {
+    /** CheckBox cell bound to the per-row selection property. */
+    private class CheckBoxCell extends TableCell<PruneCandidate, Boolean> {
         private final CheckBox checkBox = new CheckBox();
 
-        CheckBoxTableCell() {
-            checkBox.setSelected(true);
+        CheckBoxCell() {
             setAlignment(Pos.CENTER);
+            checkBox.selectedProperty().addListener((obs, old, val) -> {
+                var item = getTableRow() != null ? getTableRow().getItem() : null;
+                if (item != null) {
+                    getSelectionProperty(item.sessionId()).set(val);
+                }
+            });
         }
 
         @Override
@@ -285,6 +425,13 @@ public class PrunePanel extends VBox {
             if (empty) {
                 setGraphic(null);
             } else {
+                var candidate = getTableRow().getItem();
+                if (candidate != null) {
+                    checkBox.setSelected(getSelectionProperty(candidate.sessionId()).get());
+                    // Bind bidirectionally so external changes update the checkbox
+                    getSelectionProperty(candidate.sessionId()).addListener(
+                            (obs, old, val) -> checkBox.setSelected(val));
+                }
                 setGraphic(checkBox);
             }
         }

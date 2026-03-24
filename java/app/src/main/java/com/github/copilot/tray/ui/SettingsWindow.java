@@ -315,7 +315,7 @@ public class SettingsWindow {
     // --- Prune Tab ---
 
     private Tab createPruneTab() {
-        var prunePanel = new PrunePanel();
+        var prunePanel = new PrunePanel(new com.github.copilot.tray.session.SessionPruner(), resumeHandler);
         return new Tab("Prune", prunePanel);
     }
 
