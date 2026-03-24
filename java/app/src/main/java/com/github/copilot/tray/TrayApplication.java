@@ -69,14 +69,29 @@ public class TrayApplication {
             for (var meta : metadataList) {
                 var id = meta.getSessionId();
                 if (sessionManager.getSession(id) == null) {
+                    // Parse last modified time from ISO 8601 string
+                    java.time.Instant lastModified = null;
+                    if (meta.getModifiedTime() != null) {
+                        try {
+                            lastModified = java.time.Instant.parse(meta.getModifiedTime());
+                        } catch (Exception e) {
+                            LOG.debug("Could not parse modifiedTime: {}", meta.getModifiedTime());
+                        }
+                    }
+
                     sessionManager.populateFromMetadata(
                             id,
                             meta.getSummary() != null ? meta.getSummary() : id,
                             null, // model not in metadata
-                            null  // workspace not directly in metadata
+                            null, // workspace not directly in metadata
+                            lastModified
                     );
-                    // Attach for detailed events
-                    sdkBridge.attachSession(id, eventRouter);
+
+                    // Only attach for detailed events if session is active (within 12h)
+                    var session = sessionManager.getSession(id);
+                    if (session != null && session.status() != com.github.copilot.tray.session.SessionStatus.ARCHIVED) {
+                        sdkBridge.attachSession(id, eventRouter);
+                    }
                 }
             }
             sessionManager.fireChange();

@@ -3,6 +3,8 @@ package com.github.copilot.tray;
 import com.github.copilot.tray.session.*;
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -87,5 +89,33 @@ class SessionManagerTest {
 
         manager.removeSession("test-6");
         assertNull(manager.getSession("test-6"));
+    }
+
+    @Test
+    void recentSessionStaysActive() {
+        var manager = new SessionManager();
+        manager.populateFromMetadata("recent-1", "Recent Session", "claude", "/tmp",
+                Instant.now().minus(2, ChronoUnit.HOURS));
+
+        assertEquals(SessionStatus.ACTIVE, manager.getSession("recent-1").status());
+    }
+
+    @Test
+    void oldSessionIsArchived() {
+        var manager = new SessionManager();
+        manager.populateFromMetadata("old-1", "Old Session", "gpt-5", "/tmp",
+                Instant.now().minus(13, ChronoUnit.HOURS));
+
+        assertEquals(SessionStatus.ARCHIVED, manager.getSession("old-1").status());
+    }
+
+    @Test
+    void sessionAtExactly12HoursStaysActive() {
+        var manager = new SessionManager();
+        // Exactly at the boundary (minus a tiny bit to stay within)
+        manager.populateFromMetadata("edge-1", "Edge Session", "claude", "/tmp",
+                Instant.now().minus(12, ChronoUnit.HOURS).plus(1, ChronoUnit.MINUTES));
+
+        assertEquals(SessionStatus.ACTIVE, manager.getSession("edge-1").status());
     }
 }

@@ -67,4 +67,9 @@ public record SessionSnapshot(
         return new SessionSnapshot(id, newName, status, model, createdAt,
                 lastActivityAt, workingDirectory, usage, subagents, pendingPermission);
     }
+
+    public SessionSnapshot withLastActivity(Instant time) {
+        return new SessionSnapshot(id, name, status, model, createdAt,
+                time, workingDirectory, usage, subagents, pendingPermission);
+    }
 }
