@@ -416,14 +416,21 @@ public class PrunePanel extends VBox {
             @Override
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
-                var treeItem = getTreeTableRow() != null ? getTreeTableRow().getTreeItem() : null;
-                if (empty || treeItem == null || !(treeItem.getValue() instanceof PruneCandidate pc)) {
+                if (empty) {
                     setGraphic(null);
-                } else {
-                    resumeBtn.setOnAction(e -> resumeHandler.accept(pc.sessionId()));
-                    deleteBtn.setOnAction(e -> deleteSingleSession(pc));
-                    setGraphic(box);
+                    return;
                 }
+                // Defer to next pulse so getTreeTableRow().getTreeItem() is stable
+                Platform.runLater(() -> {
+                    var treeItem = getTreeTableRow() != null ? getTreeTableRow().getTreeItem() : null;
+                    if (treeItem != null && treeItem.getValue() instanceof PruneCandidate pc) {
+                        resumeBtn.setOnAction(e -> resumeHandler.accept(pc.sessionId()));
+                        deleteBtn.setOnAction(e -> deleteSingleSession(pc));
+                        setGraphic(box);
+                    } else {
+                        setGraphic(null);
+                    }
+                });
             }
         });
 
@@ -431,6 +438,9 @@ public class PrunePanel extends VBox {
                 sizeCol, userMsgCol, assistMsgCol, actionsCol);
         treeTable.setPlaceholder(new Label("No pruneable sessions found. Click 'Scan' to search."));
     }
+
+    // Track which directories the user has manually collapsed
+    private final Set<String> collapsedDirs = new HashSet<>();
 
     private void rebuildTreeView() {
         var root = new TreeItem<Object>("Root");
@@ -447,7 +457,12 @@ public class PrunePanel extends VBox {
 
         for (var dir : sortedDirs) {
             var dirItem = new TreeItem<Object>((Object) dir);
-            dirItem.setExpanded(true);
+            // Preserve user's collapse state; default to expanded
+            dirItem.setExpanded(!collapsedDirs.contains(dir));
+            dirItem.expandedProperty().addListener((obs, old, expanded) -> {
+                if (expanded) collapsedDirs.remove(dir);
+                else collapsedDirs.add(dir);
+            });
             for (var c : byDir.get(dir)) {
                 dirItem.getChildren().add(new TreeItem<>(c));
             }
@@ -772,7 +787,6 @@ public class PrunePanel extends VBox {
                 if (treeItem.getValue() instanceof PruneCandidate && boundId != null) {
                     getSelectionProperty(boundId).set(val);
                 } else if (treeItem.getValue() instanceof String) {
-                    // Group toggle: select/deselect all children
                     for (var child : treeItem.getChildren()) {
                         if (child.getValue() instanceof PruneCandidate pc) {
                             getSelectionProperty(pc.sessionId()).set(val);
@@ -780,14 +794,14 @@ public class PrunePanel extends VBox {
                     }
                 }
             });
+
+            // Re-bind when the row's tree item changes (cell recycling)
+            indexProperty().addListener((obs, old, idx) -> Platform.runLater(this::rebind));
         }
 
-        @Override
-        protected void updateItem(Boolean item, boolean empty) {
-            super.updateItem(item, empty);
+        private void rebind() {
             var treeItem = getTreeTableRow() != null ? getTreeTableRow().getTreeItem() : null;
-
-            if (empty || treeItem == null) {
+            if (isEmpty() || treeItem == null) {
                 setGraphic(null);
                 unbind();
                 return;
@@ -811,7 +825,6 @@ public class PrunePanel extends VBox {
                 }
                 setGraphic(checkBox);
             } else if (treeItem.getValue() instanceof String dir) {
-                // Group row: show checkbox that reflects "all children selected" state
                 var groupKey = "group:" + dir;
                 if (!groupKey.equals(boundId)) {
                     unbind();
@@ -822,7 +835,7 @@ public class PrunePanel extends VBox {
                             .map(TreeItem::getValue)
                             .filter(PruneCandidate.class::isInstance)
                             .map(PruneCandidate.class::cast)
-                            .allMatch(pc -> getSelectionProperty(pc.sessionId()).get());
+                            .allMatch(pc2 -> getSelectionProperty(pc2.sessionId()).get());
                     checkBox.setSelected(allSelected);
                     updating = false;
                 }
@@ -831,6 +844,12 @@ public class PrunePanel extends VBox {
                 setGraphic(null);
                 unbind();
             }
+        }
+
+        @Override
+        protected void updateItem(Boolean item, boolean empty) {
+            super.updateItem(item, empty);
+            rebind();
         }
 
         private void unbind() {
