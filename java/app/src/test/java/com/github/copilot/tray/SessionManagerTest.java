@@ -95,16 +95,17 @@ class SessionManagerTest {
     void recentSessionStaysActive() {
         var manager = new SessionManager();
         manager.populateFromMetadata("recent-1", "Recent Session", "claude", "/tmp",
-                Instant.now().minus(2, ChronoUnit.HOURS));
+                Instant.now().minus(2, ChronoUnit.HOURS), false);
 
         assertEquals(SessionStatus.ACTIVE, manager.getSession("recent-1").status());
+        assertFalse(manager.getSession("recent-1").remote());
     }
 
     @Test
     void oldSessionIsArchived() {
         var manager = new SessionManager();
         manager.populateFromMetadata("old-1", "Old Session", "gpt-5", "/tmp",
-                Instant.now().minus(13, ChronoUnit.HOURS));
+                Instant.now().minus(13, ChronoUnit.HOURS), false);
 
         assertEquals(SessionStatus.ARCHIVED, manager.getSession("old-1").status());
     }
@@ -112,10 +113,19 @@ class SessionManagerTest {
     @Test
     void sessionAtExactly12HoursStaysActive() {
         var manager = new SessionManager();
-        // Exactly at the boundary (minus a tiny bit to stay within)
         manager.populateFromMetadata("edge-1", "Edge Session", "claude", "/tmp",
-                Instant.now().minus(12, ChronoUnit.HOURS).plus(1, ChronoUnit.MINUTES));
+                Instant.now().minus(12, ChronoUnit.HOURS).plus(1, ChronoUnit.MINUTES), false);
 
         assertEquals(SessionStatus.ACTIVE, manager.getSession("edge-1").status());
+    }
+
+    @Test
+    void remoteSessionFlag() {
+        var manager = new SessionManager();
+        manager.populateFromMetadata("remote-1", "Remote Session", "claude", "/tmp",
+                Instant.now(), true);
+
+        assertTrue(manager.getSession("remote-1").remote());
+        assertEquals(SessionStatus.ACTIVE, manager.getSession("remote-1").status());
     }
 }

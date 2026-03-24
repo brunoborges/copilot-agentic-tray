@@ -90,39 +90,15 @@ public class TrayManager {
     private PopupMenu buildMenu(Collection<SessionSnapshot> sessions) {
         var menu = new PopupMenu("Copilot CLI Tray");
 
-        // Active sessions
-        var activeSessions = sessions.stream()
-                .filter(s -> s.status() != SessionStatus.ARCHIVED)
-                .toList();
+        // Split sessions by local vs remote, then by active vs archived
+        var localSessions = sessions.stream().filter(s -> !s.remote()).toList();
+        var remoteSessions = sessions.stream().filter(SessionSnapshot::remote).toList();
 
-        var activeMenu = new Menu("Active Sessions (" + activeSessions.size() + ")");
-        if (activeSessions.isEmpty()) {
-            activeMenu.add(disabledItem("No active sessions"));
-        } else {
-            for (var session : activeSessions) {
-                activeMenu.add(buildSessionMenu(session));
-            }
-        }
-        menu.add(activeMenu);
+        // Local Sessions
+        menu.add(buildSessionGroup("Local Sessions", localSessions));
 
-        // Archived sessions
-        var archivedSessions = sessions.stream()
-                .filter(s -> s.status() == SessionStatus.ARCHIVED)
-                .toList();
-
-        var archivedMenu = new Menu("Archived Sessions (" + archivedSessions.size() + ")");
-        if (archivedSessions.isEmpty()) {
-            archivedMenu.add(disabledItem("No archived sessions"));
-        } else {
-            for (var session : archivedSessions) {
-                var item = new Menu(session.name());
-                item.add(actionItem("Delete", e ->
-                        sdkBridge.deleteSession(session.id())
-                                .thenRun(() -> sessionManager.removeSession(session.id()))));
-                archivedMenu.add(item);
-            }
-        }
-        menu.add(archivedMenu);
+        // Remote Sessions
+        menu.add(buildSessionGroup("Remote Sessions", remoteSessions));
 
         menu.addSeparator();
 
@@ -151,6 +127,56 @@ public class TrayManager {
         }));
 
         return menu;
+    }
+
+    /**
+     * Build a menu group (e.g. "Local Sessions" or "Remote Sessions") with
+     * active and archived sub-sections.
+     */
+    private Menu buildSessionGroup(String label, java.util.List<SessionSnapshot> sessions) {
+        var active = sessions.stream()
+                .filter(s -> s.status() != SessionStatus.ARCHIVED)
+                .toList();
+        var archived = sessions.stream()
+                .filter(s -> s.status() == SessionStatus.ARCHIVED)
+                .toList();
+
+        var groupMenu = new Menu(label + " (" + sessions.size() + ")");
+
+        if (sessions.isEmpty()) {
+            groupMenu.add(disabledItem("None"));
+            return groupMenu;
+        }
+
+        // Active sub-section
+        var activeMenu = new Menu("Active (" + active.size() + ")");
+        if (active.isEmpty()) {
+            activeMenu.add(disabledItem("None"));
+        } else {
+            for (var session : active) {
+                activeMenu.add(buildSessionMenu(session));
+            }
+        }
+        groupMenu.add(activeMenu);
+
+        // Archived sub-section
+        var archivedMenu = new Menu("Archived (" + archived.size() + ")");
+        if (archived.isEmpty()) {
+            archivedMenu.add(disabledItem("None"));
+        } else {
+            for (var session : archived) {
+                var item = new Menu(session.name());
+                item.add(actionItem("Resume in Terminal", e ->
+                        terminalLauncher.resumeSession(session.id())));
+                item.add(actionItem("Delete", e ->
+                        sdkBridge.deleteSession(session.id())
+                                .thenRun(() -> sessionManager.removeSession(session.id()))));
+                archivedMenu.add(item);
+            }
+        }
+        groupMenu.add(archivedMenu);
+
+        return groupMenu;
     }
 
     private Menu buildSessionMenu(SessionSnapshot session) {

@@ -84,7 +84,8 @@ public class TrayApplication {
                             meta.getSummary() != null ? meta.getSummary() : id,
                             null, // model not in metadata
                             null, // workspace not directly in metadata
-                            lastModified
+                            lastModified,
+                            meta.isRemote()
                     );
 
                     // Only attach for detailed events if session is active (within 12h)

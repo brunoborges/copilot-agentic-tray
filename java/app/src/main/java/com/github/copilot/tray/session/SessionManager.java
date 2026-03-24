@@ -112,9 +112,12 @@ public class SessionManager {
      * Sessions whose last activity is older than 12 hours are marked ARCHIVED.
      */
     public void populateFromMetadata(String id, String name, String model,
-                                     String workingDirectory, Instant lastModified) {
+                                     String workingDirectory, Instant lastModified,
+                                     boolean remote) {
         if (!sessions.containsKey(id)) {
-            var snapshot = SessionSnapshot.initial(id, model, workingDirectory).withName(name);
+            var snapshot = SessionSnapshot.initial(id, model, workingDirectory)
+                    .withName(name)
+                    .withRemote(remote);
             if (lastModified != null) {
                 snapshot = snapshot.withLastActivity(lastModified);
                 if (lastModified.isBefore(Instant.now().minus(ACTIVE_THRESHOLD))) {
