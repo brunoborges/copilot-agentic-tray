@@ -55,19 +55,26 @@ public class TerminalLauncher {
     }
 
     private List<String> buildMacCommand(String shellCmd) {
-        // Detect iTerm2, then fall back to Terminal.app
-        if (new File("/Applications/iTerm.app").exists()) {
+        // Write a temporary .command file and use `open` to launch it
+        // in the user's default terminal application (iTerm2, Terminal.app, etc.)
+        try {
+            var tmp = File.createTempFile("copilot-tray-", ".command");
+            tmp.deleteOnExit();
+            try (var writer = new java.io.FileWriter(tmp)) {
+                writer.write("#!/bin/bash\n");
+                writer.write(shellCmd + "\n");
+            }
+            tmp.setExecutable(true);
+            return List.of("open", tmp.getAbsolutePath());
+        } catch (IOException e) {
+            LOG.error("Failed to create .command file", e);
+            // Last-resort fallback
             return List.of("osascript",
-                    "-e", "tell application \"iTerm\"",
+                    "-e", "tell application \"Terminal\"",
                     "-e", "activate",
-                    "-e", "create window with default profile command \"" + shellCmd + "\"",
+                    "-e", "do script \"" + shellCmd + "\"",
                     "-e", "end tell");
         }
-        return List.of("osascript",
-                "-e", "tell application \"Terminal\"",
-                "-e", "activate",
-                "-e", "do script \"" + shellCmd + "\"",
-                "-e", "end tell");
     }
 
     private List<String> buildWindowsCommand(String shellCmd) {
