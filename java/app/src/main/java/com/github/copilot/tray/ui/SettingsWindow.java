@@ -208,6 +208,10 @@ public class SettingsWindow {
         deleteBtn = new Button("Delete");
         deleteBtn.setDisable(true);
         deleteBtn.setStyle("-fx-text-fill: red;");
+        var deleteProgress = new ProgressBar(0);
+        deleteProgress.setMaxWidth(Double.MAX_VALUE);
+        deleteProgress.setVisible(false);
+        deleteProgress.managedProperty().bind(deleteProgress.visibleProperty());
         deleteBtn.setOnAction(e -> {
             var selected = List.copyOf(sessionTable.getSelectionModel().getSelectedItems());
             if (selected.isEmpty()) return;
@@ -217,20 +221,37 @@ public class SettingsWindow {
             new Alert(Alert.AlertType.CONFIRMATION, msg, ButtonType.YES, ButtonType.NO)
                     .showAndWait().ifPresent(bt -> {
                         if (bt == ButtonType.YES) {
-                            for (var s : selected) deleteHandler.accept(s.id());
-                            sessionTable.getSelectionModel().clearSelection();
+                            actionBar.setDisable(true);
+                            deleteProgress.setProgress(0);
+                            deleteProgress.setVisible(true);
+                            int total = selected.size();
+                            Thread.ofVirtual().start(() -> {
+                                for (int i = 0; i < total; i++) {
+                                    var s = selected.get(i);
+                                    deleteHandler.accept(s.id());
+                                    final double progress = (i + 1.0) / total;
+                                    Platform.runLater(() -> deleteProgress.setProgress(progress));
+                                }
+                                Platform.runLater(() -> {
+                                    deleteProgress.setVisible(false);
+                                    sessionTable.getSelectionModel().clearSelection();
+                                    updateActionButtons(0);
+                                });
+                            });
                         }
                     });
         });
         actionBar = new HBox(8, resumeBtn, renameBtn, deleteBtn);
         actionBar.setPadding(new Insets(6));
 
+        var actionPane = new VBox(4, actionBar, deleteProgress);
+
         var detailScroll = new ScrollPane(detailLabel);
         detailScroll.setFitToWidth(true);
         detailScroll.setFitToHeight(true);
         detailScroll.setPrefHeight(200);
 
-        var rightPane = new VBox(sessionTable, new Separator(), detailScroll, actionBar);
+        var rightPane = new VBox(sessionTable, new Separator(), detailScroll, actionPane);
         VBox.setVgrow(sessionTable, Priority.ALWAYS);
 
         var split = new SplitPane(leftBox, rightPane);
