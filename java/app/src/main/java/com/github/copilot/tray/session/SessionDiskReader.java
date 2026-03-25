@@ -33,7 +33,8 @@ public final class SessionDiskReader {
             int assistantMessages,
             long fileSizeBytes,
             String workingDirectory,
-            String firstUserMessage
+            String firstUserMessage,
+            String model
     ) {
         public int totalMessages() { return userMessages + assistantMessages; }
 
@@ -53,7 +54,7 @@ public final class SessionDiskReader {
                     systemTools, messages, buffer);
         }
 
-        public static final DiskStats EMPTY = new DiskStats(0, 0, 0, "", "");
+        public static final DiskStats EMPTY = new DiskStats(0, 0, 0, "", "", "");
     }
 
     /**
@@ -76,7 +77,7 @@ public final class SessionDiskReader {
         }
 
         if (!Files.exists(eventsFile)) {
-            return new DiskStats(0, 0, 0, workingDirectory, "");
+            return new DiskStats(0, 0, 0, workingDirectory, "", "");
         }
 
         long fileSize = 0;
@@ -89,6 +90,7 @@ public final class SessionDiskReader {
         int userMessages = 0;
         int assistantMessages = 0;
         String firstUserMessage = "";
+        String model = "";
 
         try (var lines = Files.lines(eventsFile)) {
             for (var line : (Iterable<String>) lines::iterator) {
@@ -99,6 +101,15 @@ public final class SessionDiskReader {
                     }
                 } else if (line.contains("\"assistant.message\"")) {
                     assistantMessages++;
+                } else if (line.contains("\"session.model_change\"")) {
+                    var m = extractJsonField(line, "newModel");
+                    if (!m.isEmpty()) model = m;
+                } else if (line.contains("\"session.resume\"")) {
+                    var m = extractJsonField(line, "selectedModel");
+                    if (!m.isEmpty()) model = m;
+                } else if (line.contains("\"session.shutdown\"")) {
+                    var m = extractJsonField(line, "currentModel");
+                    if (!m.isEmpty()) model = m;
                 }
             }
         } catch (IOException e) {
@@ -106,7 +117,7 @@ public final class SessionDiskReader {
         }
 
         return new DiskStats(userMessages, assistantMessages, fileSize,
-                workingDirectory, firstUserMessage);
+                workingDirectory, firstUserMessage, model);
     }
 
     private static String readWorkspaceField(Path workspaceFile, String field) {
@@ -130,6 +141,17 @@ public final class SessionDiskReader {
         if (end < 0) return "";
         var content = jsonLine.substring(start + 1, Math.min(end, start + 81));
         return content.length() > 80 ? content.substring(0, 77) + "..." : content;
+    }
+
+    /** Extract a simple string field value from a JSON line (fast, no full parse). */
+    private static String extractJsonField(String jsonLine, String field) {
+        var needle = "\"" + field + "\":\"";
+        int idx = jsonLine.indexOf(needle);
+        if (idx < 0) return "";
+        int start = idx + needle.length();
+        int end = jsonLine.indexOf('"', start);
+        if (end < 0) return "";
+        return jsonLine.substring(start, end);
     }
 
     /**

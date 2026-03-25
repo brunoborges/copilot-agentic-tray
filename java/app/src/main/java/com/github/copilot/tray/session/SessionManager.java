@@ -122,8 +122,12 @@ public class SessionManager {
                     : diskStats.workingDirectory();
             var resolvedName = (name != null && !name.equals(id)) ? name
                     : (!diskStats.firstUserMessage().isEmpty() ? diskStats.firstUserMessage() : id);
+            // Prefer model from disk events (session.model_change, session.resume, session.shutdown)
+            var resolvedModel = (diskStats.model() != null && !diskStats.model().isEmpty())
+                    ? diskStats.model()
+                    : (model != null ? model : "unknown");
 
-            var snapshot = SessionSnapshot.initial(id, model, resolvedDir)
+            var snapshot = SessionSnapshot.initial(id, resolvedModel, resolvedDir)
                     .withName(resolvedName)
                     .withRemote(remote)
                     .withUsage(diskStats.toUsageSnapshot());
