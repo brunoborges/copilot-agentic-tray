@@ -192,8 +192,7 @@ public class SettingsWindow {
         detailGrid.setPadding(new Insets(10));
         detailGrid.getColumnConstraints().addAll(
                 new ColumnConstraints(90),
-                new ColumnConstraints(Region.USE_COMPUTED_SIZE, Region.USE_COMPUTED_SIZE, Double.MAX_VALUE, Priority.ALWAYS, null, true),
-                new ColumnConstraints(28));
+                new ColumnConstraints(Region.USE_COMPUTED_SIZE, Region.USE_COMPUTED_SIZE, Double.MAX_VALUE, Priority.ALWAYS, null, true));
         var placeholderLabel = new Label("Select a session to view details.");
         placeholderLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #888;");
         detailPane = new VBox(placeholderLabel);
@@ -500,32 +499,61 @@ public class SettingsWindow {
     private int addDetailRow(int row, String label, String value) {
         var keyLabel = new Label(label);
         keyLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #aaa;");
+        keyLabel.setMinWidth(Region.USE_PREF_SIZE);
 
         var valueField = new TextField(value != null ? value : "");
         valueField.setEditable(false);
         valueField.setStyle("-fx-font-family: monospace; -fx-font-size: 12px; "
                 + "-fx-background-color: transparent; -fx-border-color: transparent; -fx-padding: 0;");
+        HBox.setHgrow(valueField, Priority.ALWAYS);
 
-        var copyBtn = new Button("📋");
-        copyBtn.setStyle("-fx-font-size: 10px; -fx-padding: 1 4; -fx-background-color: transparent; -fx-cursor: hand;");
+        var copyIcon = createCopyIcon();
+        var copyBtn = new Button();
+        copyBtn.setGraphic(copyIcon);
+        copyBtn.setStyle("-fx-padding: 2; -fx-background-color: transparent; -fx-cursor: hand;");
         copyBtn.setTooltip(new Tooltip("Copy to clipboard"));
         copyBtn.setOnAction(e -> {
             var cb = javafx.scene.input.Clipboard.getSystemClipboard();
             var content = new javafx.scene.input.ClipboardContent();
             content.putString(value != null ? value : "");
             cb.setContent(content);
+            copyBtn.setStyle("-fx-padding: 2; -fx-background-color: transparent; -fx-cursor: hand; -fx-opacity: 0.5;");
+            javafx.animation.PauseTransition flash = new javafx.animation.PauseTransition(javafx.util.Duration.millis(300));
+            flash.setOnFinished(ev -> copyBtn.setStyle("-fx-padding: 2; -fx-background-color: transparent; -fx-cursor: hand;"));
+            flash.play();
         });
 
+        var valueRow = new HBox(4, valueField, copyBtn);
+        valueRow.setAlignment(Pos.CENTER_LEFT);
+
         detailGrid.add(keyLabel, 0, row);
-        detailGrid.add(valueField, 1, row);
-        detailGrid.add(copyBtn, 2, row);
+        detailGrid.add(valueRow, 1, row);
         return row + 1;
+    }
+
+    /** Small copy icon using JavaFX shapes (two overlapping rectangles). */
+    private static javafx.scene.Group createCopyIcon() {
+        var back = new javafx.scene.shape.Rectangle(3, 0, 8, 9);
+        back.setFill(Color.TRANSPARENT);
+        back.setStroke(Color.gray(0.6));
+        back.setStrokeWidth(1.2);
+        back.setArcWidth(1.5);
+        back.setArcHeight(1.5);
+
+        var front = new javafx.scene.shape.Rectangle(0, 3, 8, 9);
+        front.setFill(Color.TRANSPARENT);
+        front.setStroke(Color.gray(0.6));
+        front.setStrokeWidth(1.2);
+        front.setArcWidth(1.5);
+        front.setArcHeight(1.5);
+
+        return new javafx.scene.Group(back, front);
     }
 
     private int addSectionHeader(int row, String title) {
         var header = new Label(title);
         header.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #ccc; -fx-padding: 6 0 2 0;");
-        detailGrid.add(header, 0, row, 3, 1);
+        detailGrid.add(header, 0, row, 2, 1);
         return row + 1;
     }
 
