@@ -41,8 +41,6 @@ public class UsageTilesPane extends ScrollPane {
     private final Tile donutTile;
     private final Tile contextGauge;
     private final Tile tokenCountTile;
-    private final Tile modelTile;
-    private final Tile statusTile;
 
     // Breakdown tiles
     private final Tile systemToolsTile;
@@ -90,21 +88,6 @@ public class UsageTilesPane extends ScrollPane {
                 .value(0).decimals(0).animated(false)
                 .build();
 
-        modelTile = TileBuilder.create()
-                .skinType(Tile.SkinType.TEXT)
-                .prefSize(TILE_W, TILE_H)
-                .title("Model")
-                .description("—")
-                .textVisible(true)
-                .build();
-
-        statusTile = TileBuilder.create()
-                .skinType(Tile.SkinType.STATUS)
-                .prefSize(TILE_W, TILE_H)
-                .title("Status")
-                .description("Select a session")
-                .build();
-
         systemToolsTile = buildBreakdownTile("System/Tools", COLOR_SYSTEM);
         messagesTokTile = buildBreakdownTile("Messages", COLOR_MSGS);
         freeSpaceTile   = buildBreakdownTile("Free Space", COLOR_FREE);
@@ -118,7 +101,7 @@ public class UsageTilesPane extends ScrollPane {
         var donutWithLegend = new VBox(4, donutTile, buildDonutLegend());
         donutWithLegend.setAlignment(Pos.CENTER);
 
-        var detailRow = new HBox(6, donutWithLegend, contextGauge, tokenCountTile, modelTile, statusTile);
+        var detailRow = new HBox(6, donutWithLegend, contextGauge, tokenCountTile);
         detailRow.setAlignment(Pos.CENTER);
 
         var breakdownRow = new HBox(6, systemToolsTile, messagesTokTile, freeSpaceTile, bufferTile);
@@ -173,13 +156,6 @@ public class UsageTilesPane extends ScrollPane {
         tokenCountTile.setValue(u.currentTokens());
         tokenCountTile.setDescription("of " + formatTokens(u.tokenLimit()));
 
-        modelTile.setDescription(session.model());
-
-        statusTile.setDescription(session.status().name());
-        statusTile.setActiveColor(statusColor(session.status()));
-        statusTile.setText(session.status().name()
-                + (session.remote() ? " (Remote)" : " (Local)"));
-
         systemToolsTile.setValue(u.systemToolsPercent());
         systemToolsTile.setDescription(formatTokens(u.systemToolsTokens()));
         messagesTokTile.setValue(u.messagesPercent());
@@ -202,12 +178,6 @@ public class UsageTilesPane extends ScrollPane {
         tokenCountTile.setValue(totalTokens);
         tokenCountTile.setDescription(selected.size() + " sessions selected");
 
-        modelTile.setDescription(selected.stream().map(SessionSnapshot::model).distinct().count() == 1
-                ? selected.getFirst().model() : "multiple");
-
-        statusTile.setDescription(selected.size() + " sessions");
-        statusTile.setText("");
-
         int sysTokSum = selected.stream().mapToInt(s -> s.usage().systemToolsTokens()).sum();
         int msgTokSum = selected.stream().mapToInt(s -> s.usage().messagesTokens()).sum();
         int freeTokSum = selected.stream().mapToInt(s -> s.usage().freeSpaceTokens()).sum();
@@ -228,9 +198,6 @@ public class UsageTilesPane extends ScrollPane {
         contextGauge.setValue(0);
         tokenCountTile.setValue(0);
         tokenCountTile.setDescription("of 0");
-        modelTile.setDescription("—");
-        statusTile.setDescription("Select a session");
-        statusTile.setText("");
         for (var tile : List.of(systemToolsTile, messagesTokTile, freeSpaceTile, bufferTile)) {
             tile.setValue(0);
             tile.setDescription("");
@@ -281,17 +248,6 @@ public class UsageTilesPane extends ScrollPane {
         var box = new HBox(4, swatch, label);
         box.setAlignment(Pos.CENTER_LEFT);
         return box;
-    }
-
-    private static Color statusColor(SessionStatus status) {
-        return switch (status) {
-            case IDLE -> Tile.TileColor.GREEN.color;
-            case BUSY -> Tile.TileColor.ORANGE.color;
-            case ACTIVE -> Tile.TileColor.BLUE.color;
-            case ERROR -> Tile.TileColor.RED.color;
-            case ARCHIVED -> Color.GRAY;
-            case CORRUPTED -> Color.web("#cc44cc");
-        };
     }
 
     private static String formatTokens(int n) {
