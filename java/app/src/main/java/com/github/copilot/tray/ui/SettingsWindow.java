@@ -479,25 +479,9 @@ public class SettingsWindow {
     }
 
     private void showMultiDetail(javafx.collections.ObservableList<SessionSnapshot> selected) {
-        detailGrid.getChildren().clear();
-        int row = 0;
-        int totalTokens = 0, totalMsgs = 0;
-        var models = new LinkedHashSet<String>();
-        var statuses = new LinkedHashMap<SessionStatus, Integer>();
-        for (var s : selected) {
-            totalTokens += s.usage().currentTokens();
-            totalMsgs += s.usage().messagesCount();
-            models.add(s.model());
-            statuses.merge(s.status(), 1, Integer::sum);
-        }
-        row = addSectionHeader(row, selected.size() + " sessions selected");
-        row = addDetailRow(row, "Total Tokens", String.valueOf(totalTokens));
-        row = addDetailRow(row, "Total Msgs", String.valueOf(totalMsgs));
-        row = addDetailRow(row, "Models", String.join(", ", models));
-        var statusStr = new StringBuilder();
-        statuses.forEach((st, cnt) -> statusStr.append(st).append("(").append(cnt).append(") "));
-        addDetailRow(row, "Statuses", statusStr.toString().trim());
-        detailPane.getChildren().setAll(detailGrid);
+        var label = new Label(selected.size() + " sessions selected");
+        label.setStyle("-fx-font-size: 12px; -fx-text-fill: #888;");
+        detailPane.getChildren().setAll(label);
     }
 
     private void clearDetailPane() {
