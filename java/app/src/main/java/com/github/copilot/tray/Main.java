@@ -25,6 +25,17 @@ public class Main extends Application {
 
     @Override
     public void start(Stage primaryStage) {
+        // Set the dock/taskbar icon (shows in Cmd+Tab / Alt+Tab)
+        if (java.awt.Taskbar.isTaskbarSupported()) {
+            var taskbar = java.awt.Taskbar.getTaskbar();
+            if (taskbar.isSupported(java.awt.Taskbar.Feature.ICON_IMAGE)) {
+                var iconUrl = getClass().getResource("/icons/tray-idle.png");
+                if (iconUrl != null) {
+                    taskbar.setIconImage(new javax.swing.ImageIcon(iconUrl).getImage());
+                }
+            }
+        }
+
         // Don't show the primary stage — the app lives in the system tray
         trayApp = new TrayApplication();
         trayApp.start();
