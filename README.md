@@ -2,9 +2,8 @@
 
 > 🤖 A cross-platform system tray app to track and manage GitHub Copilot CLI sessions and remote coding agents.
 
-[![Status: Specification](https://img.shields.io/badge/status-specification-blue)](SPECIFICATION.md)
 [![Platform: Linux | macOS | Windows](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey)](#)
-[![Java 21+](https://img.shields.io/badge/Java-21%2B-blue?logo=openjdk)](https://openjdk.org/)
+[![Java 25](https://img.shields.io/badge/Java-25-blue?logo=openjdk)](https://openjdk.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
@@ -25,37 +24,51 @@ Built on the [GitHub Copilot SDK for Java](https://github.com/github/copilot-sdk
 - **Subagent tracking** — monitor parallel subagents spawned via `/fleet` mode
 - **Session actions** — Resume, Cancel, Delete sessions from the tray menu
 - **OS notifications** — get notified when context window fills up, errors occur, or permissions are requested
-- **Settings window** — detailed view with usage history, preferences, and model info
+- **Dashboard window** — detailed view with usage tiles, donut charts, session details, and preferences
+- **Session pruning** — clean up old/empty sessions to reclaim disk space
 - **Cross-platform** — Linux, macOS, Windows on both x86_64 and arm64
 
 ---
 
-## System Requirements
+## Prerequisites
 
-- **Java 21+** (or use the native binary — no JVM required)
-- **GitHub Copilot CLI** installed and in `PATH` (version 0.0.411+ recommended)
+- **JDK 25** (EA) — download from [jdk.java.net/25](https://jdk.java.net/25/) or install via [SDKMAN](https://sdkman.io/)
+- **Maven 3.9+**
+- **GitHub Copilot CLI** installed and in `PATH`
 - **Active GitHub Copilot subscription**
 
 ---
 
-## Quick Start
+## Getting Started
 
-> 🚧 This project is currently in the **specification phase**. Implementation is coming soon.
-
-Once released, you'll be able to:
+### Clone the repository
 
 ```bash
-# Download the native binary for your platform from GitHub Releases
-# e.g., on macOS arm64:
-curl -LO https://github.com/brunoborges/copilot-agentic-tray/releases/latest/download/copilot-agentic-tray-macos-arm64
-chmod +x copilot-agentic-tray-macos-arm64
-./copilot-agentic-tray-macos-arm64
+git clone https://github.com/brunoborges/copilot-agentic-tray.git
+cd copilot-agentic-tray
 ```
 
-Or run from the fat JAR:
+### Build
 
 ```bash
-java -jar copilot-agentic-tray.jar
+cd java
+mvn clean install
+```
+
+### Run
+
+```bash
+cd java
+mvn -pl app javafx:run
+```
+
+The app will start in the system tray. Look for the Copilot icon in your menu bar (macOS), system tray (Linux), or notification area (Windows).
+
+### Run Tests
+
+```bash
+cd java
+mvn test
 ```
 
 ---
@@ -65,7 +78,10 @@ java -jar copilot-agentic-tray.jar
 GitHub Copilot Agentic Tray uses the [GitHub Copilot SDK for Java](https://github.com/github/copilot-sdk-java) to connect to your locally-running Copilot CLI process via its JSON-RPC interface. It subscribes to session lifecycle events, usage info events, and subagent events to keep the tray menu up-to-date in real time.
 
 ```
-System Tray Menu  ←→  Session Manager  ←→  SDK Bridge (CopilotClient)  ←→  copilot (CLI process)
+System Tray  ←→  Session Manager  ←→  SDK Bridge (CopilotClient)  ←→  copilot (CLI process)
+     ↕                                                                    ↕
+Dashboard UI                                                    Session Disk Reader
+(JavaFX)                                                     (~/.copilot/session-state/)
 ```
 
 Key SDK integrations:
@@ -76,6 +92,8 @@ Key SDK integrations:
 - `SubagentStartedEvent` / `SubagentCompletedEvent` — agent tracking
 - `PermissionRequestedEvent` — permission request notifications
 
+Sessions are also discovered directly from disk (`~/.copilot/session-state/`) to show sessions the SDK server may not know about.
+
 ---
 
 ## Tray Menu
@@ -83,27 +101,30 @@ Key SDK integrations:
 ```
 🤖 GitHub Copilot Agentic Tray
 ────────────────────────────────────
+🟢 CLI Connected
 ▸ Active Sessions (2)
-  ├─ 📝 my-feature [claude-sonnet-4.6]
+  ├─ my-feature [claude-sonnet-4.6]
   │    ├─ Status: BUSY (42% context)
-  │    ├─ Resume in Terminal
-  │    ├─ Cancel Session
-  │    └─ Delete Session
-  └─ 📝 fix-bug [gpt-5.2]
-       ├─ Status: IDLE (18% context)
-       ├─ Resume in Terminal
-       └─ Cancel Session
+  │    └─ Resume in Terminal
+  └─ fix-bug [gpt-5.2]
+       └─ Status: IDLE (18% context)
 ────────────────────────────────────
-▸ Archived Sessions (3)
-▸ Usage Summary
-  ├─ Tokens: 12,345 / 100,000 (12%)
-  └─ Premium Requests: 47 used
-────────────────────────────────────
-⚙  Open Settings...
+⚙  Open Dashboard...
 🔄 New Session
 ────────────────────────────────────
 ✕  Quit
 ```
+
+---
+
+## Dashboard
+
+The Dashboard window provides:
+
+- **Sessions tab** — directory-first layout with session table, detail pane, usage tiles (donut chart, gauges, context breakdown), and actions (Resume, Rename, Delete)
+- **Prune tab** — scan and clean up old/empty session directories
+- **Preferences tab** — configure CLI path, poll interval, warning thresholds, notifications
+- **About tab** — version info and links
 
 ---
 
@@ -120,27 +141,37 @@ Key SDK integrations:
 ## Technology Stack
 
 | Component       | Technology                                         |
-|-----------------|----------------------------------------------------|
-| Language        | Java 21+                                           |
+|-----------------|--------------------------------------------------  |
+| Language        | Java 25                                            |
 | Build           | Maven                                              |
-| Copilot SDK     | `com.github:copilot-sdk-java`                      |
-| System Tray     | [Dorkbox SystemTray](https://github.com/dorkbox/SystemTray) |
-| Settings UI     | JavaFX (OpenJFX)                                   |
-| Native binaries | GraalVM Native Image                               |
+| UI Framework    | JavaFX 25 (OpenJFX) + TilesFX                     |
+| Copilot SDK     | `com.github:copilot-sdk-java:0.1.32-java.0`       |
+| System Tray     | `java.awt.SystemTray`                              |
 | CI/CD           | GitHub Actions (multi-platform build matrix)       |
 
 ---
 
-## Project Status
+## Project Structure
 
-| Phase   | Description                            | Status      |
-|---------|----------------------------------------|-------------|
-| Phase 1 | Core tray + active session display     | 📋 Planned  |
-| Phase 2 | Usage telemetry + settings window      | 📋 Planned  |
-| Phase 3 | Models, subagents, notifications       | 📋 Planned  |
-| Phase 4 | GraalVM native binaries + auto-update  | 📋 Planned  |
-
-See [SPECIFICATION.md](SPECIFICATION.md) for the full design.
+```
+copilot-agentic-tray/
+├── SPECIFICATION.md           # Full design specification
+├── README.md
+├── LICENSE
+└── java/
+    ├── IMPLEMENTATION.md      # Implementation details
+    ├── pom.xml                # Parent POM
+    └── app/
+        ├── pom.xml            # App module POM
+        └── src/main/java/com/github/copilot/tray/
+            ├── Main.java              # JavaFX entry point
+            ├── TrayApplication.java   # App wiring & lifecycle
+            ├── config/                # Configuration store
+            ├── sdk/                   # SDK bridge & terminal launcher
+            ├── session/               # Session manager, disk reader, pruner
+            ├── tray/                  # System tray manager
+            └── ui/                    # Dashboard, usage tiles, prune panel
+```
 
 ---
 
