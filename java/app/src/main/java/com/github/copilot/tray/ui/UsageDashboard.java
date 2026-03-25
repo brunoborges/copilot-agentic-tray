@@ -148,7 +148,10 @@ public class UsageDashboard extends VBox {
         totalTokensTile = buildAggregateTile("Total Tokens");
 
         // --- Layout ---
-        var detailRow = new HBox(6, donutTile, contextGauge, tokenCountTile, modelTile, statusTile);
+        var donutWithLegend = new VBox(4, donutTile, buildDonutLegend());
+        donutWithLegend.setAlignment(Pos.CENTER);
+
+        var detailRow = new HBox(6, donutWithLegend, contextGauge, tokenCountTile, modelTile, statusTile);
         detailRow.setAlignment(Pos.CENTER);
 
         var breakdownRow = new HBox(6, systemToolsTile, messagesTokTile, freeSpaceTile, bufferTile);
@@ -472,6 +475,24 @@ public class UsageDashboard extends VBox {
                 .prefSize(TILE_W, SMALL_H)
                 .title(title).value(0).decimals(0)
                 .animated(false).build();
+    }
+
+    private HBox buildDonutLegend() {
+        var items = new HBox(12,
+                legendItem("System/Tools", COLOR_SYSTEM),
+                legendItem("Messages", COLOR_MSGS));
+        items.setAlignment(Pos.CENTER);
+        return items;
+    }
+
+    private static HBox legendItem(String name, Color color) {
+        var swatch = new javafx.scene.shape.Circle(5, color);
+        var label = new Label(name);
+        label.setTextFill(Color.web("#cccccc"));
+        label.setStyle("-fx-font-size: 10px;");
+        var box = new HBox(4, swatch, label);
+        box.setAlignment(Pos.CENTER_LEFT);
+        return box;
     }
 
     private static Color statusColor(SessionStatus status) {
