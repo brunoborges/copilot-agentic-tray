@@ -192,7 +192,7 @@ public class SettingsWindow {
         detailGrid.setPadding(new Insets(10));
         detailGrid.getColumnConstraints().addAll(
                 new ColumnConstraints(90),
-                new ColumnConstraints(Region.USE_COMPUTED_SIZE, Region.USE_COMPUTED_SIZE, Double.MAX_VALUE, Priority.ALWAYS, null, true));
+                new ColumnConstraints());
         var placeholderLabel = new Label("Select a session to view details.");
         placeholderLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #888;");
         detailPane = new VBox(placeholderLabel);
@@ -503,9 +503,9 @@ public class SettingsWindow {
 
         var valueField = new TextField(value != null ? value : "");
         valueField.setEditable(false);
+        valueField.setPrefColumnCount(value != null ? Math.max(value.length(), 1) : 1);
         valueField.setStyle("-fx-font-family: monospace; -fx-font-size: 12px; "
                 + "-fx-background-color: transparent; -fx-border-color: transparent; -fx-padding: 0;");
-        HBox.setHgrow(valueField, Priority.ALWAYS);
 
         var copyIcon = createCopyIcon();
         var copyBtn = new Button();
@@ -523,7 +523,7 @@ public class SettingsWindow {
             flash.play();
         });
 
-        var valueRow = new HBox(4, valueField, copyBtn);
+        var valueRow = new HBox(2, valueField, copyBtn);
         valueRow.setAlignment(Pos.CENTER_LEFT);
 
         detailGrid.add(keyLabel, 0, row);
