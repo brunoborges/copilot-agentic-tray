@@ -70,7 +70,7 @@ public class TrayManager {
 
     public TrayIcon getTrayIcon() { return trayIcon; }
 
-    private volatile Collection<SessionSnapshot> lastSessions = List.of();
+    private volatile Collection<SessionSnapshot> lastSessions = java.util.List.of();
 
     public void refresh(Collection<SessionSnapshot> sessions) {
         if (trayIcon == null) return;
