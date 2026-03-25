@@ -74,7 +74,7 @@ public class SessionEventLogWindow {
         stage.close();
     }
 
-    private void appendLog(String message) {
+    void appendLog(String message) {
         String timestamp = LocalTime.now().format(TIME_FMT);
         logArea.appendText("[" + timestamp + "]  " + message + "\n");
     }

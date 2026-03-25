@@ -229,8 +229,13 @@ public class SettingsWindow {
             var logWindow = new SessionEventLogWindow(session.id(), session.name(), () -> {
                 sdkBridge.detachSession(session.id());
             });
-            sdkBridge.attachSession(session.id(), (sid, event) -> logWindow.onEvent(sid, event));
             logWindow.show();
+            sdkBridge.attachSession(session.id(), (sid, event) -> logWindow.onEvent(sid, event))
+                    .thenRun(() -> Platform.runLater(() -> logWindow.appendLog("Attached — listening for events")))
+                    .exceptionally(ex -> {
+                        Platform.runLater(() -> logWindow.appendLog("ERROR: " + ex.getMessage()));
+                        return null;
+                    });
         });
         renameBtn = new Button("Rename");
         renameBtn.setDisable(true);

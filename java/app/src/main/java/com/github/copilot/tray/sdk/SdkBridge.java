@@ -74,23 +74,27 @@ public class SdkBridge {
 
     /**
      * Attach to a session with a generic event handler.
+     * If already attached, detaches first so the new handler takes effect.
+     * Returns a future that completes when attachment succeeds or fails.
      */
-    public void attachSession(String sessionId,
+    public CompletableFuture<Void> attachSession(String sessionId,
                               BiConsumer<String, com.github.copilot.sdk.events.AbstractSessionEvent> eventHandler) {
-        if (client == null || !connected) return;
-        if (attachedSessions.containsKey(sessionId)) return;
+        if (client == null || !connected) {
+            return CompletableFuture.failedFuture(
+                    new IllegalStateException("SDK not connected"));
+        }
+        // Detach existing attachment so we can re-attach with the new handler
+        if (attachedSessions.containsKey(sessionId)) {
+            detachSession(sessionId);
+        }
 
         var config = new ResumeSessionConfig()
                 .setOnPermissionRequest(PermissionHandler.APPROVE_ALL)
                 .setOnEvent(event -> eventHandler.accept(sessionId, event));
-        client.resumeSession(sessionId, config)
+        return client.resumeSession(sessionId, config)
                 .thenAccept(session -> {
                     attachedSessions.put(sessionId, session);
                     LOG.info("Attached to session {}", sessionId);
-                })
-                .exceptionally(ex -> {
-                    LOG.warn("Failed to attach to session {}", sessionId, ex);
-                    return null;
                 });
     }
 
