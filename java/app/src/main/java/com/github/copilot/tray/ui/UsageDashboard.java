@@ -37,10 +37,12 @@ public class UsageDashboard extends VBox {
 
     // Directory list (mirrors Sessions tab)
     private final ListView<String> directoryList = new ListView<>();
-    private String selectedDirectoryPath; // stripped badge
+    private String selectedDirectoryPath; // stripped badge, null = no selection
 
     // Session table (multi-select like Sessions tab)
     private final TableView<SessionSnapshot> sessionTable = new TableView<>();
+    // IDs selected before a refresh; used to restore selection afterwards
+    private List<String> pendingRestoreIds = List.of();
 
     // Donut chart data
     private final ChartData systemToolsData;
@@ -84,6 +86,7 @@ public class UsageDashboard extends VBox {
                     if (refreshing) return;
                     selectedDirectoryPath = nv != null ? stripBadge(nv) : null;
                     populateSessionTable();
+                    syncTilesToCurrentState();
                 });
 
         // --- Session table (right, top) ---
@@ -238,17 +241,10 @@ public class UsageDashboard extends VBox {
         sessionTable.getColumns().addAll(nameCol, modelCol, statusCol, tokensCol, pctCol, msgsCol);
         sessionTable.setPlaceholder(new Label("Select a directory."));
 
-        sessionTable.getSelectionModel().selectedItemProperty()
-                .addListener((obs, old, selected) -> {
+        sessionTable.getSelectionModel().getSelectedItems()
+                .addListener((javafx.collections.ListChangeListener<SessionSnapshot>) change -> {
                     if (refreshing) return;
-                    var selectedItems = sessionTable.getSelectionModel().getSelectedItems();
-                    if (selectedItems.size() == 1 && selected != null) {
-                        updateDetailTiles(selected);
-                    } else if (selectedItems.size() > 1) {
-                        updateAggregateDetailTiles(List.copyOf(selectedItems));
-                    } else {
-                        clearDetailTiles();
-                    }
+                    onSessionSelectionChanged();
                 });
     }
 
@@ -262,68 +258,75 @@ public class UsageDashboard extends VBox {
 
     private void refreshDirectoryList() {
         refreshing = true;
-        String previousDir = selectedDirectoryPath;
-        // Save ALL selected session IDs for multi-select restore
-        var previousSelectedIds = sessionTable.getSelectionModel().getSelectedItems().stream()
-                .map(SessionSnapshot::id)
-                .toList();
+        try {
+            String previousDir = selectedDirectoryPath;
+            // Save ALL selected session IDs for multi-select restore
+            pendingRestoreIds = sessionTable.getSelectionModel().getSelectedItems().stream()
+                    .map(SessionSnapshot::id)
+                    .toList();
 
-        // Group by directory
-        var byDir = allSessions.stream()
-                .collect(Collectors.groupingBy(SessionSnapshot::workingDirectory,
-                        TreeMap::new, Collectors.toList()));
+            // Group by directory
+            var byDir = allSessions.stream()
+                    .collect(Collectors.groupingBy(SessionSnapshot::workingDirectory,
+                            TreeMap::new, Collectors.toList()));
 
-        // Build labels with badges (same format as Sessions tab)
-        var dirLabels = new ArrayList<String>();
-        for (var entry : byDir.entrySet()) {
-            var dir = entry.getKey();
-            var list = entry.getValue();
-            long activeCount = list.stream()
-                    .filter(s -> s.status() != SessionStatus.ARCHIVED && s.status() != SessionStatus.CORRUPTED)
-                    .count();
-            var badge = new StringBuilder();
-            badge.append(dir).append("  [").append(list.size()).append("]");
-            if (activeCount > 0) badge.append(" ●");
-            dirLabels.add(badge.toString());
-        }
+            // Build labels with badges (same format as Sessions tab)
+            var dirLabels = new ArrayList<String>();
+            for (var entry : byDir.entrySet()) {
+                var dir = entry.getKey();
+                var list = entry.getValue();
+                long activeCount = list.stream()
+                        .filter(s -> s.status() != SessionStatus.ARCHIVED && s.status() != SessionStatus.CORRUPTED)
+                        .count();
+                var badge = new StringBuilder();
+                badge.append(dir).append("  [").append(list.size()).append("]");
+                if (activeCount > 0) badge.append(" ●");
+                dirLabels.add(badge.toString());
+            }
 
-        directoryList.setItems(FXCollections.observableArrayList(dirLabels));
+            directoryList.setItems(FXCollections.observableArrayList(dirLabels));
 
-        // Restore directory selection
-        if (previousDir != null) {
-            for (int i = 0; i < dirLabels.size(); i++) {
-                if (previousDir.equals(stripBadge(dirLabels.get(i)))) {
-                    directoryList.getSelectionModel().select(i);
-                    selectedDirectoryPath = previousDir;
-                    break;
+            // Restore directory selection
+            boolean dirRestored = false;
+            if (previousDir != null) {
+                for (int i = 0; i < dirLabels.size(); i++) {
+                    if (previousDir.equals(stripBadge(dirLabels.get(i)))) {
+                        directoryList.getSelectionModel().select(i);
+                        selectedDirectoryPath = previousDir;
+                        dirRestored = true;
+                        break;
+                    }
                 }
             }
-        }
-        refreshing = false;
+            if (!dirRestored) {
+                selectedDirectoryPath = null;
+            }
 
-        // Populate session table
-        populateSessionTable();
+            // Populate session table for the current directory
+            populateSessionTable();
 
-        // Restore session selection (all previously selected IDs)
-        if (!previousSelectedIds.isEmpty()) {
-            var idSet = new java.util.HashSet<>(previousSelectedIds);
-            sessionTable.getSelectionModel().clearSelection();
-            for (int i = 0; i < sessionTable.getItems().size(); i++) {
-                if (idSet.contains(sessionTable.getItems().get(i).id())) {
-                    sessionTable.getSelectionModel().select(i);
+            // Restore session selection (all previously selected IDs)
+            if (!pendingRestoreIds.isEmpty()) {
+                var idSet = new HashSet<>(pendingRestoreIds);
+                sessionTable.getSelectionModel().clearSelection();
+                for (int i = 0; i < sessionTable.getItems().size(); i++) {
+                    if (idSet.contains(sessionTable.getItems().get(i).id())) {
+                        sessionTable.getSelectionModel().select(i);
+                    }
                 }
             }
+            pendingRestoreIds = List.of();
+        } finally {
+            refreshing = false;
         }
 
-        // Update aggregate tiles for the filtered directory
-        var dirSessions = getFilteredSessions();
-        updateAggregateTiles(dirSessions);
+        // Now that refreshing is off, sync tiles to final state
+        syncTilesToCurrentState();
     }
 
     private void populateSessionTable() {
         if (selectedDirectoryPath == null) {
             sessionTable.setItems(FXCollections.emptyObservableList());
-            updateAggregateTiles(List.of());
             return;
         }
         var sessions = allSessions.stream()
@@ -332,14 +335,34 @@ public class UsageDashboard extends VBox {
                         Comparator.nullsFirst(Comparator.reverseOrder())))
                 .toList();
         sessionTable.setItems(FXCollections.observableArrayList(sessions));
-        updateAggregateTiles(sessions);
     }
 
-    private List<SessionSnapshot> getFilteredSessions() {
-        if (selectedDirectoryPath == null) return allSessions;
-        return allSessions.stream()
-                .filter(s -> selectedDirectoryPath.equals(s.workingDirectory()))
-                .toList();
+    /**
+     * Single source of truth for updating all tiles based on current state.
+     * Called after any user interaction or refresh completes.
+     */
+    private void syncTilesToCurrentState() {
+        // Aggregate tiles always reflect the full directory
+        var dirSessions = sessionTable.getItems();
+        updateAggregateTiles(dirSessions);
+
+        // Detail tiles reflect session selection
+        var selected = sessionTable.getSelectionModel().getSelectedItems();
+        if (selected.size() == 1 && selected.getFirst() != null) {
+            updateDetailTiles(selected.getFirst());
+        } else if (selected.size() > 1) {
+            updateAggregateDetailTiles(List.copyOf(selected));
+        } else {
+            clearDetailTiles();
+        }
+    }
+
+    /**
+     * Called by the ListChangeListener on the selected items list.
+     * Safe to call from user interaction only (guarded by refreshing flag).
+     */
+    private void onSessionSelectionChanged() {
+        syncTilesToCurrentState();
     }
 
     private void updateDetailTiles(SessionSnapshot session) {
@@ -420,7 +443,7 @@ public class UsageDashboard extends VBox {
         }
     }
 
-    private void updateAggregateTiles(List<SessionSnapshot> sessions) {
+    private void updateAggregateTiles(Collection<? extends SessionSnapshot> sessions) {
         totalSessionsTile.setValue(sessions.size());
         activeSessionsTile.setValue(sessions.stream()
                 .filter(s -> s.status() != SessionStatus.ARCHIVED).count());
