@@ -64,6 +64,7 @@ public class UsageDashboard extends VBox {
 
     // Currently selected
     private SessionSnapshot selectedSession;
+    private boolean refreshing; // guard to suppress selection listener during refresh
 
     public UsageDashboard(SessionManager sessionManager) {
         this.sessionManager = sessionManager;
@@ -226,6 +227,7 @@ public class UsageDashboard extends VBox {
         // Selection drives the detail tiles
         sessionTable.getSelectionModel().selectedItemProperty()
                 .addListener((obs, old, selected) -> {
+                    if (refreshing) return; // skip during bulk refresh
                     selectedSession = selected;
                     if (selected != null) {
                         updateDetailTiles(selected);
@@ -240,35 +242,44 @@ public class UsageDashboard extends VBox {
         Platform.runLater(() -> {
             var list = List.copyOf(sessions);
             var previousId = selectedSession != null ? selectedSession.id() : null;
-
-            // Save scroll position
             int scrollIndex = sessionTable.getSelectionModel().getSelectedIndex();
 
+            // Suppress selection listener during item replacement
+            refreshing = true;
             sessionTable.setItems(FXCollections.observableArrayList(list));
-            updateAggregateTiles(list);
 
             // Restore selection by session ID
-            boolean restored = false;
+            SessionSnapshot restoredSession = null;
             if (previousId != null) {
                 for (int i = 0; i < list.size(); i++) {
                     if (list.get(i).id().equals(previousId)) {
                         sessionTable.getSelectionModel().select(i);
                         sessionTable.scrollTo(i);
-                        restored = true;
+                        restoredSession = list.get(i);
                         break;
                     }
                 }
             }
             // If previous session is gone, try same index position
-            if (!restored && !list.isEmpty()) {
+            if (restoredSession == null && !list.isEmpty()) {
                 int idx = Math.min(scrollIndex, list.size() - 1);
                 if (idx >= 0) {
                     sessionTable.getSelectionModel().select(idx);
                     sessionTable.scrollTo(idx);
+                    restoredSession = list.get(idx);
                 } else {
                     sessionTable.getSelectionModel().selectFirst();
+                    restoredSession = list.getFirst();
                 }
             }
+            refreshing = false;
+
+            // Update tiles directly with the restored session (no animation flicker)
+            selectedSession = restoredSession;
+            if (restoredSession != null) {
+                updateDetailTiles(restoredSession);
+            }
+            updateAggregateTiles(list);
         });
     }
 
