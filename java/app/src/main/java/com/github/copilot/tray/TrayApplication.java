@@ -88,8 +88,10 @@ public class TrayApplication {
         // Connect to Copilot CLI
         sdkBridge.connect(metadataList -> {
             // Reconcile session list from SDK with our state
+            var sdkIds = new java.util.HashSet<String>();
             for (var meta : metadataList) {
                 var id = meta.getSessionId();
+                sdkIds.add(id);
                 if (sessionManager.getSession(id) == null) {
                     // Parse last modified time from ISO 8601 string
                     java.time.Instant lastModified = null;
@@ -111,6 +113,14 @@ public class TrayApplication {
                     );
                 }
             }
+
+            // Discover sessions on disk that the SDK didn't return
+            for (var diskId : SessionDiskReader.listSessionIds()) {
+                if (!sdkIds.contains(diskId) && sessionManager.getSession(diskId) == null) {
+                    sessionManager.populateFromMetadata(diskId, diskId, null, null, null, false);
+                }
+            }
+
             sessionManager.fireChange();
         }, config.getPollIntervalSeconds());
 

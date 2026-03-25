@@ -23,6 +23,28 @@ public final class SessionDiskReader {
     private SessionDiskReader() {}
 
     /**
+     * List all session IDs found on disk.
+     * Discovers both directory-based sessions and legacy .jsonl file sessions.
+     */
+    public static java.util.List<String> listSessionIds() {
+        if (!Files.isDirectory(SESSION_STORE)) return java.util.List.of();
+        try (var entries = Files.list(SESSION_STORE)) {
+            return entries
+                    .map(p -> {
+                        var name = p.getFileName().toString();
+                        if (Files.isDirectory(p)) return name;
+                        if (name.endsWith(".jsonl")) return name.substring(0, name.length() - 6);
+                        return null;
+                    })
+                    .filter(java.util.Objects::nonNull)
+                    .toList();
+        } catch (IOException e) {
+            LOG.warn("Failed to list session-state directory", e);
+            return java.util.List.of();
+        }
+    }
+
+    /**
      * Stats read from disk for a single session.
      */
     public record DiskStats(
