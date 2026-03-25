@@ -31,7 +31,7 @@ public class TrayManager {
     private final Runnable onOpenSettings;
     private final Runnable onShowSessions;
     private TrayIcon trayIcon;
-    private volatile String cliStatusLabel = "Copilot CLI is Disconnected";
+    private volatile String cliStatusLabel = "🔴 Copilot CLI is Disconnected";
 
     public TrayManager(SessionManager sessionManager, SdkBridge sdkBridge,
                        TerminalLauncher terminalLauncher, Runnable onOpenSettings,
@@ -235,19 +235,20 @@ public class TrayManager {
      */
     public void refreshCliStatus() {
         sdkBridge.fetchCliStatus().thenAccept(status -> {
-            var sb = new StringBuilder("Copilot CLI");
-            if (status.version() != null) sb.append(" ").append(status.version());
+            var sb = new StringBuilder();
             var stateStr = switch (status.connectionState()) {
-                case CONNECTED -> "Connected";
-                case CONNECTING -> "Connecting…";
-                case DISCONNECTED -> "Disconnected";
-                case ERROR -> "Error";
+                case CONNECTED -> { sb.append("🟢 "); yield "Connected"; }
+                case CONNECTING -> { sb.append("🟡 "); yield "Connecting…"; }
+                case DISCONNECTED -> { sb.append("🔴 "); yield "Disconnected"; }
+                case ERROR -> { sb.append("🔴 "); yield "Error"; }
             };
+            sb.append("Copilot CLI");
+            if (status.version() != null) sb.append(" ").append(status.version());
             sb.append(" is ").append(stateStr);
             cliStatusLabel = sb.toString();
         }).exceptionally(ex -> {
             LOG.debug("Failed to fetch CLI status", ex);
-            cliStatusLabel = "Copilot CLI is Disconnected";
+            cliStatusLabel = "🔴 Copilot CLI is Disconnected";
             return null;
         });
     }
