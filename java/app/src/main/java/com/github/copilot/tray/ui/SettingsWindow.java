@@ -286,11 +286,20 @@ public class SettingsWindow {
 
         var actionPane = new VBox(4, actionBar, deleteProgress);
 
-        var rightPane = new VBox(usageTilesPane.getAggregateRow(), sessionTable, new Separator(), subTabPane, actionPane);
-        VBox.setVgrow(sessionTable, Priority.SOMETIMES);
+        // Top: aggregate tiles + session table
+        var topPane = new VBox(usageTilesPane.getAggregateRow(), sessionTable);
+        VBox.setVgrow(sessionTable, Priority.ALWAYS);
+
+        // Bottom: detail/usage sub-tabs + actions
+        var bottomPane = new VBox(subTabPane, actionPane);
         VBox.setVgrow(subTabPane, Priority.ALWAYS);
 
-        var split = new SplitPane(leftBox, rightPane);
+        // Vertical split so user can resize table vs detail area
+        var rightSplit = new SplitPane(topPane, bottomPane);
+        rightSplit.setOrientation(javafx.geometry.Orientation.VERTICAL);
+        rightSplit.setDividerPositions(0.5);
+
+        var split = new SplitPane(leftBox, rightSplit);
         split.setDividerPositions(0.28);
 
         return new Tab("Sessions", split);
