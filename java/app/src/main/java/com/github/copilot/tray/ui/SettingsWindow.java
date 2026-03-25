@@ -304,7 +304,10 @@ public class SettingsWindow {
         refreshing = true;
         boolean isRemote = isRemoteSelected();
         String previousDir = selectedDirectory != null ? stripBadge(selectedDirectory) : null;
-        String previousSessionId = selectedSession != null ? selectedSession.id() : null;
+        // Save ALL selected session IDs for multi-select restore
+        var previousSelectedIds = sessionTable.getSelectionModel().getSelectedItems().stream()
+                .map(SessionSnapshot::id)
+                .toList();
 
         // Group by directory, filtered by local/remote
         var filtered = sessions.stream()
@@ -350,12 +353,13 @@ public class SettingsWindow {
         // Populate session table for selected directory
         onDirectorySelected(directoryList.getSelectionModel().getSelectedItem());
 
-        // Restore session selection
-        if (previousSessionId != null) {
+        // Restore session selection (all previously selected IDs)
+        if (!previousSelectedIds.isEmpty()) {
+            var idSet = new HashSet<>(previousSelectedIds);
+            sessionTable.getSelectionModel().clearSelection();
             for (int i = 0; i < sessionTable.getItems().size(); i++) {
-                if (sessionTable.getItems().get(i).id().equals(previousSessionId)) {
+                if (idSet.contains(sessionTable.getItems().get(i).id())) {
                     sessionTable.getSelectionModel().select(i);
-                    return;
                 }
             }
         }

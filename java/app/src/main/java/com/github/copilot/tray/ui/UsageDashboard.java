@@ -263,9 +263,10 @@ public class UsageDashboard extends VBox {
     private void refreshDirectoryList() {
         refreshing = true;
         String previousDir = selectedDirectoryPath;
-        String previousSessionId = null;
-        var selectedItem = sessionTable.getSelectionModel().getSelectedItem();
-        if (selectedItem != null) previousSessionId = selectedItem.id();
+        // Save ALL selected session IDs for multi-select restore
+        var previousSelectedIds = sessionTable.getSelectionModel().getSelectedItems().stream()
+                .map(SessionSnapshot::id)
+                .toList();
 
         // Group by directory
         var byDir = allSessions.stream()
@@ -303,12 +304,13 @@ public class UsageDashboard extends VBox {
         // Populate session table
         populateSessionTable();
 
-        // Restore session selection
-        if (previousSessionId != null) {
+        // Restore session selection (all previously selected IDs)
+        if (!previousSelectedIds.isEmpty()) {
+            var idSet = new java.util.HashSet<>(previousSelectedIds);
+            sessionTable.getSelectionModel().clearSelection();
             for (int i = 0; i < sessionTable.getItems().size(); i++) {
-                if (sessionTable.getItems().get(i).id().equals(previousSessionId)) {
+                if (idSet.contains(sessionTable.getItems().get(i).id())) {
                     sessionTable.getSelectionModel().select(i);
-                    return;
                 }
             }
         }
