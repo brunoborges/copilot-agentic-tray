@@ -1,6 +1,6 @@
-# Copilot CLI Tray — Java Implementation Guide
+# GitHub Copilot Agentic Tray — Java Implementation Guide
 
-This document describes the concrete technical implementation of Copilot CLI Tray: project structure, dependencies, module system, build pipeline, packaging, and CI/CD.
+This document describes the concrete technical implementation of GitHub Copilot Agentic Tray: project structure, dependencies, module system, build pipeline, packaging, and CI/CD.
 
 ---
 
@@ -84,7 +84,7 @@ java/
     ├── windows/
     │   └── app.ico                                 # Windows icon (multi-res ICO)
     └── linux/
-        ├── copilot-cli-tray.desktop                # XDG desktop entry
+        ├── copilot-agentic-tray.desktop                # XDG desktop entry
         └── app.png                                 # 256x256 Linux icon
 ```
 
@@ -125,13 +125,13 @@ module com.github.copilot.tray {
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.github.copilot</groupId>
-  <artifactId>copilot-cli-tray-parent</artifactId>
+  <artifactId>copilot-agentic-tray-parent</artifactId>
   <version>1.0.0-SNAPSHOT</version>
   <packaging>pom</packaging>
 
-  <name>Copilot CLI Tray (Parent)</name>
+  <name>GitHub Copilot Agentic Tray (Parent)</name>
   <description>Cross-platform system tray for GitHub Copilot CLI sessions</description>
-  <url>https://github.com/brunoborges/copilot-cli-tray</url>
+  <url>https://github.com/brunoborges/copilot-agentic-tray</url>
 
   <licenses>
     <license>
@@ -305,7 +305,7 @@ module com.github.copilot.tray {
               <argument>--type</argument>
               <argument>${installer.type}</argument>      <!-- Set per platform profile -->
               <argument>--name</argument>
-              <argument>Copilot CLI Tray</argument>
+              <argument>GitHub Copilot Agentic Tray</argument>
               <argument>--app-version</argument>
               <argument>${project.version}</argument>
               <argument>--vendor</argument>
@@ -349,7 +349,7 @@ module com.github.copilot.tray {
           <configuration>
             <environmentVariables>
               <!-- Used in jpackage execution above -->
-              <JPACKAGE_EXTRA_ARGS>--mac-bundle-identifier com.github.copilot.tray --mac-package-name "Copilot CLI Tray"</JPACKAGE_EXTRA_ARGS>
+              <JPACKAGE_EXTRA_ARGS>--mac-bundle-identifier com.github.copilot.tray --mac-package-name "GitHub Copilot Agentic Tray"</JPACKAGE_EXTRA_ARGS>
             </environmentVariables>
           </configuration>
         </plugin>
@@ -530,9 +530,9 @@ mvn package -pl app -P skip-jlink
 ### Full Build with Installer
 
 ```bash
-# Produces: target/installer/Copilot CLI Tray-1.0.0.dmg  (on macOS)
-#           target/installer/copilot-cli-tray_1.0.0_amd64.deb  (on Linux)
-#           target/installer/Copilot CLI Tray-1.0.0.msi  (on Windows)
+# Produces: target/installer/GitHub Copilot Agentic Tray-1.0.0.dmg  (on macOS)
+#           target/installer/copilot-agentic-tray_1.0.0_amd64.deb  (on Linux)
+#           target/installer/GitHub Copilot Agentic Tray-1.0.0.msi  (on Windows)
 mvn clean package -pl app
 ```
 
@@ -596,7 +596,7 @@ steps:
   - name: Upload installer artifact
     uses: actions/upload-artifact@v4
     with:
-      name: copilot-cli-tray-${{ matrix.os }}-${{ matrix.arch }}
+      name: copilot-agentic-tray-${{ matrix.os }}-${{ matrix.arch }}
       path: java/app/target/installer/*.${{ matrix.artifact }}
 ```
 
@@ -623,10 +623,10 @@ On a `v*` tag push:
 - **Universal binary**: since macOS arm64 and x86_64 are separate jobs, produce separate DMGs (not a fat binary — jlink images are arch-specific)
 
 ```
-Copilot CLI Tray-1.0.0.dmg
-  └─ Copilot CLI Tray.app/
+GitHub Copilot Agentic Tray-1.0.0.dmg
+  └─ GitHub Copilot Agentic Tray.app/
        ├─ Contents/
-       │   ├─ MacOS/Copilot CLI Tray      (launcher script/binary)
+       │   ├─ MacOS/GitHub Copilot Agentic Tray      (launcher script/binary)
        │   ├─ Info.plist
        │   ├─ Resources/app.icns
        │   └─ app/
@@ -642,29 +642,29 @@ Copilot CLI Tray-1.0.0.dmg
 
 ```bash
 # One-time install
-sudo dpkg -i copilot-cli-tray_1.0.0_amd64.deb
+sudo dpkg -i copilot-agentic-tray_1.0.0_amd64.deb
 
 # Or if hosted in an APT repository:
-curl -fsSL https://brunoborges.github.io/copilot-cli-tray/apt/KEY.gpg | sudo apt-key add -
-echo "deb https://brunoborges.github.io/copilot-cli-tray/apt stable main" | sudo tee /etc/apt/sources.list.d/copilot-cli-tray.list
-sudo apt update && sudo apt install copilot-cli-tray
+curl -fsSL https://brunoborges.github.io/copilot-agentic-tray/apt/KEY.gpg | sudo apt-key add -
+echo "deb https://brunoborges.github.io/copilot-agentic-tray/apt stable main" | sudo tee /etc/apt/sources.list.d/copilot-agentic-tray.list
+sudo apt update && sudo apt install copilot-agentic-tray
 ```
 
 DEB package layout:
 ```
-/opt/copilot-cli-tray/
-  ├─ bin/Copilot CLI Tray          (launcher)
+/opt/copilot-agentic-tray/
+  ├─ bin/GitHub Copilot Agentic Tray          (launcher)
   └─ lib/
       ├─ runtime/                   (jlink minimal JRE)
       └─ app/
-          └─ copilot-cli-tray.jar
+          └─ copilot-agentic-tray.jar
 
-/usr/share/applications/copilot-cli-tray.desktop   (XDG desktop entry)
-/usr/share/icons/hicolor/256x256/apps/copilot-cli-tray.png
+/usr/share/applications/copilot-agentic-tray.desktop   (XDG desktop entry)
+/usr/share/icons/hicolor/256x256/apps/copilot-agentic-tray.png
 ```
 
 Additional `jpackage` arguments for Linux:
-- `--linux-package-name copilot-cli-tray`
+- `--linux-package-name copilot-agentic-tray`
 - `--linux-app-category Development`
 - `--linux-menu-group Development`
 - `--linux-shortcut` (adds to application menu)
@@ -678,21 +678,21 @@ Additional `jpackage` arguments for Linux:
 
 ```powershell
 # Install
-msiexec /i "Copilot CLI Tray-1.0.0.msi" /quiet
+msiexec /i "GitHub Copilot Agentic Tray-1.0.0.msi" /quiet
 
 # Uninstall
-msiexec /x "Copilot CLI Tray-1.0.0.msi" /quiet
+msiexec /x "GitHub Copilot Agentic Tray-1.0.0.msi" /quiet
 ```
 
 MSI install layout:
 ```
-%ProgramFiles%\Copilot CLI Tray\
-  ├─ Copilot CLI Tray.exe          (launcher)
+%ProgramFiles%\GitHub Copilot Agentic Tray\
+  ├─ GitHub Copilot Agentic Tray.exe          (launcher)
   ├─ runtime\                      (jlink minimal JRE)
   └─ app\
-      └─ copilot-cli-tray.jar
+      └─ copilot-agentic-tray.jar
 
-%AppData%\Microsoft\Windows\Start Menu\Programs\Copilot CLI Tray.lnk
+%AppData%\Microsoft\Windows\Start Menu\Programs\GitHub Copilot Agentic Tray.lnk
 ```
 
 Additional `jpackage` arguments for Windows:
@@ -704,7 +704,7 @@ Additional `jpackage` arguments for Windows:
 **Code signing (optional but recommended):**
 ```bash
 signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 \
-  /f certificate.p12 "Copilot CLI Tray-1.0.0.msi"
+  /f certificate.p12 "GitHub Copilot Agentic Tray-1.0.0.msi"
 ```
 
 ---
@@ -730,7 +730,7 @@ Compare to a full JDK 25: ~300+ MB. This makes the installer acceptable for dist
 On startup, the app queries the GitHub Releases API:
 
 ```
-GET https://api.github.com/repos/brunoborges/copilot-cli-tray/releases/latest
+GET https://api.github.com/repos/brunoborges/copilot-agentic-tray/releases/latest
 ```
 
 If the `tag_name` is newer than the running version, a tray notification prompts the user to download the latest installer for their platform. The tray menu also shows an "Update Available" item that opens the browser to the release page.
@@ -743,9 +743,9 @@ Set in `ConfigStore.java` using `System.getProperty("os.name")`:
 
 | OS      | Config Directory                                          |
 |---------|-----------------------------------------------------------|
-| macOS   | `~/Library/Application Support/copilot-cli-tray/`        |
-| Linux   | `${XDG_CONFIG_HOME:-~/.config}/copilot-cli-tray/`        |
-| Windows | `%APPDATA%\copilot-cli-tray\`                             |
+| macOS   | `~/Library/Application Support/copilot-agentic-tray/`        |
+| Linux   | `${XDG_CONFIG_HOME:-~/.config}/copilot-agentic-tray/`        |
+| Windows | `%APPDATA%\copilot-agentic-tray\`                             |
 
 Files stored:
 - `config.json` — user preferences (serialized `AppConfig` via Jackson)
@@ -761,7 +761,7 @@ Implemented via `java.util.prefs.Preferences` + platform-specific mechanism:
 | OS      | Mechanism                                                             |
 |---------|-----------------------------------------------------------------------|
 | macOS   | Write `~/Library/LaunchAgents/com.github.copilot.tray.plist`         |
-| Linux   | Write `~/.config/autostart/copilot-cli-tray.desktop`                 |
+| Linux   | Write `~/.config/autostart/copilot-agentic-tray.desktop`                 |
 | Windows | Write `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` registry  |
 
 ---
@@ -772,9 +772,9 @@ Uses `java.util.logging` (JUL) backed by SLF4J's `slf4j-jdk14` bridge. Log file 
 
 | OS      | Log File                                                        |
 |---------|-----------------------------------------------------------------|
-| macOS   | `~/Library/Logs/copilot-cli-tray/app.log`                      |
-| Linux   | `~/.local/share/copilot-cli-tray/logs/app.log`                 |
-| Windows | `%LOCALAPPDATA%\copilot-cli-tray\logs\app.log`                 |
+| macOS   | `~/Library/Logs/copilot-agentic-tray/app.log`                      |
+| Linux   | `~/.local/share/copilot-agentic-tray/logs/app.log`                 |
+| Windows | `%LOCALAPPDATA%\copilot-agentic-tray\logs\app.log`                 |
 
 Log rotation: keep last 5 files, max 5 MB each.
 

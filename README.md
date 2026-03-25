@@ -1,4 +1,4 @@
-# Copilot CLI Tray
+# GitHub Copilot Agentic Tray
 
 > 🤖 A cross-platform system tray app to track and manage GitHub Copilot CLI sessions and remote coding agents.
 
@@ -11,7 +11,7 @@
 
 ## Overview
 
-**Copilot CLI Tray** lives in your system tray and gives you real-time visibility into all your [GitHub Copilot CLI](https://docs.github.com/copilot/concepts/agents/about-copilot-cli) sessions and remote coding agents — without needing to keep a terminal window open.
+**GitHub Copilot Agentic Tray** lives in your system tray and gives you real-time visibility into all your [GitHub Copilot CLI](https://docs.github.com/copilot/concepts/agents/about-copilot-cli) sessions and remote coding agents — without needing to keep a terminal window open.
 
 Built on the [GitHub Copilot SDK for Java](https://github.com/github/copilot-sdk-java), it connects to the Copilot CLI process running on your machine and surfaces session data, usage telemetry, and key management actions directly in the tray menu.
 
@@ -47,22 +47,22 @@ Once released, you'll be able to:
 ```bash
 # Download the native binary for your platform from GitHub Releases
 # e.g., on macOS arm64:
-curl -LO https://github.com/brunoborges/copilot-cli-tray/releases/latest/download/copilot-cli-tray-macos-arm64
-chmod +x copilot-cli-tray-macos-arm64
-./copilot-cli-tray-macos-arm64
+curl -LO https://github.com/brunoborges/copilot-agentic-tray/releases/latest/download/copilot-agentic-tray-macos-arm64
+chmod +x copilot-agentic-tray-macos-arm64
+./copilot-agentic-tray-macos-arm64
 ```
 
 Or run from the fat JAR:
 
 ```bash
-java -jar copilot-cli-tray.jar
+java -jar copilot-agentic-tray.jar
 ```
 
 ---
 
 ## How It Works
 
-Copilot CLI Tray uses the [GitHub Copilot SDK for Java](https://github.com/github/copilot-sdk-java) to connect to your locally-running Copilot CLI process via its JSON-RPC interface. It subscribes to session lifecycle events, usage info events, and subagent events to keep the tray menu up-to-date in real time.
+GitHub Copilot Agentic Tray uses the [GitHub Copilot SDK for Java](https://github.com/github/copilot-sdk-java) to connect to your locally-running Copilot CLI process via its JSON-RPC interface. It subscribes to session lifecycle events, usage info events, and subagent events to keep the tray menu up-to-date in real time.
 
 ```
 System Tray Menu  ←→  Session Manager  ←→  SDK Bridge (CopilotClient)  ←→  copilot (CLI process)
@@ -81,7 +81,7 @@ Key SDK integrations:
 ## Tray Menu
 
 ```
-🤖 Copilot CLI Tray
+🤖 GitHub Copilot Agentic Tray
 ────────────────────────────────────
 ▸ Active Sessions (2)
   ├─ 📝 my-feature [claude-sonnet-4.6]

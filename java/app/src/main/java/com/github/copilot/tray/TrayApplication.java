@@ -65,7 +65,7 @@ public class TrayApplication {
      * Start the application: load config, connect SDK, install tray.
      */
     public void start() {
-        LOG.info("Starting Copilot CLI Tray");
+        LOG.info("Starting GitHub Copilot Agentic Tray");
 
         // Load configuration
         configStore.load();
@@ -127,14 +127,14 @@ public class TrayApplication {
         // Register shutdown hook
         Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown, "shutdown-hook"));
 
-        LOG.info("Copilot CLI Tray started");
+        LOG.info("GitHub Copilot Agentic Tray started");
     }
 
     /**
      * Graceful shutdown.
      */
     public void shutdown() {
-        LOG.info("Shutting down Copilot CLI Tray");
+        LOG.info("Shutting down GitHub Copilot Agentic Tray");
         trayManager.uninstall();
         sdkBridge.disconnect();
         configStore.save();

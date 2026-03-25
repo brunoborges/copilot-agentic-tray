@@ -106,7 +106,7 @@ public class SettingsWindow {
         );
         var scene = new Scene(tabPane, 1100, 700);
         var s = new Stage();
-        s.setTitle("Copilot CLI Tray — Dashboard");
+        s.setTitle("GitHub Copilot Agentic Tray — Dashboard");
         s.setScene(scene);
         s.setOnCloseRequest(e -> { e.consume(); s.hide(); });
         return s;
@@ -552,7 +552,7 @@ public class SettingsWindow {
         var content = new VBox(10);
         content.setPadding(new Insets(15));
         content.getChildren().addAll(
-                new Label("Copilot CLI Tray"),
+                new Label("GitHub Copilot Agentic Tray"),
                 new Label("Version: 1.0.0-SNAPSHOT"),
                 new Label("License: MIT"),
                 new Separator(),
@@ -563,7 +563,7 @@ public class SettingsWindow {
                 new Label("JDK: " + System.getProperty("java.version")),
                 new Label("OS: " + System.getProperty("os.name") + " " + System.getProperty("os.arch")),
                 new Separator(),
-                createHyperlink("GitHub", "https://github.com/brunoborges/copilot-cli-tray")
+                createHyperlink("GitHub", "https://github.com/brunoborges/copilot-agentic-tray")
         );
         return new Tab("About", content);
     }

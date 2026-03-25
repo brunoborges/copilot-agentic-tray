@@ -1,8 +1,8 @@
-# Copilot CLI Tray — Project Specification
+# GitHub Copilot Agentic Tray — Project Specification
 
 ## Overview
 
-**Copilot CLI Tray** is a cross-platform system tray application that provides real-time visibility and management of GitHub Copilot CLI sessions and remote coding agents. It gives developers instant access to session status, usage telemetry, model information, and common session actions — all from the system tray, without requiring a terminal window.
+**GitHub Copilot Agentic Tray** is a cross-platform system tray application that provides real-time visibility and management of GitHub Copilot CLI sessions and remote coding agents. It gives developers instant access to session status, usage telemetry, model information, and common session actions — all from the system tray, without requiring a terminal window.
 
 The application integrates with the [GitHub Copilot SDK for Java](https://github.com/github/copilot-sdk-java) to programmatically communicate with the Copilot CLI, and surfaces session data in an always-accessible tray menu.
 
@@ -60,7 +60,7 @@ The GitHub Copilot SDK for Java is the primary integration point. Java 21+ with 
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│                    Copilot CLI Tray App                      │
+│                    GitHub Copilot Agentic Tray App                      │
 │                                                              │
 │  ┌─────────────┐    ┌──────────────────┐    ┌────────────┐  │
 │  │  SystemTray │    │  Session Manager │    │ Settings   │  │
@@ -169,7 +169,7 @@ The tray menu is rebuilt dynamically whenever session state changes.
 
 ```
 ┌─────────────────────────────────────────────┐
-│  🤖 Copilot CLI Tray                        │
+│  🤖 GitHub Copilot Agentic Tray                        │
 │  ─────────────────────────────────────────  │
 │  ▸ Active Sessions (N)                      │
 │    ├─ 📝 my-feature [claude-sonnet-4.6]     │
@@ -420,9 +420,9 @@ Configuration is stored in a platform-standard location:
 
 | OS      | Path                                               |
 |---------|----------------------------------------------------|
-| macOS   | `~/Library/Application Support/copilot-cli-tray/` |
-| Linux   | `~/.config/copilot-cli-tray/`                      |
-| Windows | `%APPDATA%\copilot-cli-tray\`                      |
+| macOS   | `~/Library/Application Support/copilot-agentic-tray/` |
+| Linux   | `~/.config/copilot-agentic-tray/`                      |
+| Windows | `%APPDATA%\copilot-agentic-tray\`                      |
 
 Files:
 - `config.json` — user preferences
@@ -436,7 +436,7 @@ Files:
 ### Fat JAR (Phase 1)
 - Single executable JAR with all dependencies bundled
 - Requires JRE 21+ installed on the machine
-- Launched via `java -jar copilot-cli-tray.jar`
+- Launched via `java -jar copilot-agentic-tray.jar`
 
 ### Native Binary (Phase 2, GraalVM)
 - Compile with GraalVM Native Image for target platform/arch
@@ -445,11 +445,11 @@ Files:
 
 | Target        | Runner / Cross-compile    | Output Binary                          |
 |---------------|---------------------------|----------------------------------------|
-| Linux x86_64  | `ubuntu-latest`           | `copilot-cli-tray-linux-x86_64`        |
-| Linux arm64   | `ubuntu-24.04-arm`        | `copilot-cli-tray-linux-arm64`         |
-| macOS x86_64  | `macos-13`                | `copilot-cli-tray-macos-x86_64`        |
-| macOS arm64   | `macos-latest`            | `copilot-cli-tray-macos-arm64`         |
-| Windows x86_64| `windows-latest`          | `copilot-cli-tray-windows-x86_64.exe`  |
+| Linux x86_64  | `ubuntu-latest`           | `copilot-agentic-tray-linux-x86_64`        |
+| Linux arm64   | `ubuntu-24.04-arm`        | `copilot-agentic-tray-linux-arm64`         |
+| macOS x86_64  | `macos-13`                | `copilot-agentic-tray-macos-x86_64`        |
+| macOS arm64   | `macos-latest`            | `copilot-agentic-tray-macos-arm64`         |
+| Windows x86_64| `windows-latest`          | `copilot-agentic-tray-windows-x86_64.exe`  |
 
 ### Auto-Update
 - On startup, checks GitHub Releases for a newer version

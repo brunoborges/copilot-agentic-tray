@@ -80,7 +80,7 @@ public class TrayManager {
     // =====================================================================
 
     private PopupMenu buildMenu(Collection<SessionSnapshot> sessions) {
-        var menu = new PopupMenu("Copilot CLI Tray");
+        var menu = new PopupMenu("GitHub Copilot Agentic Tray");
 
         // Dashboard (first item)
         menu.add(actionItem("Dashboard", e -> onOpenSettings.run()));

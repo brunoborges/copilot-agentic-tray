@@ -6,13 +6,13 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.github.copilot</groupId>
-  <artifactId>copilot-cli-tray-parent</artifactId>
+  <artifactId>copilot-agentic-tray-parent</artifactId>
   <version>1.0.0-SNAPSHOT</version>
   <packaging>pom</packaging>
 
-  <name>Copilot CLI Tray</name>
+  <name>GitHub Copilot Agentic Tray</name>
   <description>Cross-platform system tray for GitHub Copilot CLI sessions</description>
-  <url>https://github.com/brunoborges/copilot-cli-tray</url>
+  <url>https://github.com/brunoborges/copilot-agentic-tray</url>
 
   <licenses>
     <license>

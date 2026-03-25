@@ -15,7 +15,7 @@ import java.nio.file.Path;
 public class ConfigStore {
 
     private static final Logger LOG = LoggerFactory.getLogger(ConfigStore.class);
-    private static final String APP_DIR_NAME = "copilot-cli-tray";
+    private static final String APP_DIR_NAME = "copilot-agentic-tray";
     private static final String CONFIG_FILE = "config.json";
 
     private final ObjectMapper mapper;

@@ -5,13 +5,13 @@ package com.github.copilot.tray.tray;
  */
 public enum TrayIconState {
     /** No active sessions */
-    IDLE("tray-idle.png", "Copilot CLI Tray — No active sessions"),
+    IDLE("tray-idle.png", "GitHub Copilot Agentic Tray — No active sessions"),
     /** At least one session is active */
-    ACTIVE("tray-active.png", "Copilot CLI Tray — Sessions active"),
+    ACTIVE("tray-active.png", "GitHub Copilot Agentic Tray — Sessions active"),
     /** At least one session is busy (processing a request) */
-    BUSY("tray-busy.png", "Copilot CLI Tray — Processing..."),
+    BUSY("tray-busy.png", "GitHub Copilot Agentic Tray — Processing..."),
     /** Warning condition (context >80% full, or error) */
-    WARNING("tray-warning.png", "Copilot CLI Tray — Attention needed");
+    WARNING("tray-warning.png", "GitHub Copilot Agentic Tray — Attention needed");
 
     private final String iconFilename;
     private final String tooltip;

@@ -1,6 +1,6 @@
-# Copilot CLI Tray — Java Application
+# GitHub Copilot Agentic Tray — Java Application
 
-The Java implementation of Copilot CLI Tray, a cross-platform system tray application for monitoring and managing GitHub Copilot CLI sessions.
+The Java implementation of GitHub Copilot Agentic Tray, a cross-platform system tray application for monitoring and managing GitHub Copilot CLI sessions.
 
 ## Prerequisites
 
@@ -24,7 +24,7 @@ cd java
 mvn clean verify
 ```
 
-This compiles all sources, runs unit tests, and produces the application JAR at `app/target/copilot-cli-tray-1.0.0-SNAPSHOT.jar`.
+This compiles all sources, runs unit tests, and produces the application JAR at `app/target/copilot-agentic-tray-1.0.0-SNAPSHOT.jar`.
 
 ## Run Locally
 
@@ -43,7 +43,7 @@ This launches the app with the correct module path and JavaFX configuration. The
 cd java
 mvn clean package -pl app -DskipTests
 
-java --module-path app/target/mods:app/target/copilot-cli-tray-1.0.0-SNAPSHOT.jar \
+java --module-path app/target/mods:app/target/copilot-agentic-tray-1.0.0-SNAPSHOT.jar \
      --add-modules com.github.copilot.tray \
      -m com.github.copilot.tray/com.github.copilot.tray.Main
 ```
@@ -112,9 +112,9 @@ Config is stored at a platform-specific location:
 
 | OS      | Path                                              |
 |---------|----------------------------------------------------|
-| macOS   | `~/Library/Application Support/copilot-cli-tray/config.json` |
-| Linux   | `~/.config/copilot-cli-tray/config.json`           |
-| Windows | `%APPDATA%\copilot-cli-tray\config.json`           |
+| macOS   | `~/Library/Application Support/copilot-agentic-tray/config.json` |
+| Linux   | `~/.config/copilot-agentic-tray/config.json`           |
+| Windows | `%APPDATA%\copilot-agentic-tray\config.json`           |
 
 Settings can also be changed from the **Preferences** tab in the Settings window.
 
