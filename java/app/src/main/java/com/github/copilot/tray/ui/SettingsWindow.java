@@ -1,6 +1,7 @@
 package com.github.copilot.tray.ui;
 
 import com.github.copilot.tray.config.ConfigStore;
+import com.github.copilot.tray.session.SessionDiskReader;
 import com.github.copilot.tray.session.SessionManager;
 import com.github.copilot.tray.session.SessionSnapshot;
 import com.github.copilot.tray.session.SessionStatus;
@@ -183,6 +184,21 @@ public class SettingsWindow {
 
         var resumeBtn = new Button("Resume in Terminal");
         resumeBtn.setOnAction(e -> { if (selectedSession != null) resumeHandler.accept(selectedSession.id()); });
+        var renameBtn = new Button("Rename");
+        renameBtn.setOnAction(e -> {
+            if (selectedSession == null) return;
+            var dialog = new TextInputDialog(selectedSession.name());
+            dialog.setTitle("Rename Session");
+            dialog.setHeaderText(null);
+            dialog.setContentText("New name:");
+            dialog.showAndWait().ifPresent(newName -> {
+                if (!newName.isBlank()) {
+                    sessionManager.updateName(selectedSession.id(), newName.trim());
+                    SessionDiskReader.updateSummary(selectedSession.id(), newName.trim());
+                    sessionManager.fireChange();
+                }
+            });
+        });
         var cancelBtn = new Button("Cancel");
         cancelBtn.setOnAction(e -> { if (selectedSession != null) deleteHandler.accept(selectedSession.id()); });
         var deleteBtn = new Button("Delete");
@@ -200,7 +216,7 @@ public class SettingsWindow {
                         }
                     });
         });
-        actionBar = new HBox(8, resumeBtn, cancelBtn, deleteBtn);
+        actionBar = new HBox(8, resumeBtn, renameBtn, cancelBtn, deleteBtn);
         actionBar.setPadding(new Insets(6));
         actionBar.setDisable(true);
 

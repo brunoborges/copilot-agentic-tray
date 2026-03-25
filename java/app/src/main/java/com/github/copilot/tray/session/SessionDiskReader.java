@@ -155,6 +155,35 @@ public final class SessionDiskReader {
     }
 
     /**
+     * Update the summary field in workspace.yaml for a session.
+     */
+    public static void updateSummary(String sessionId, String newSummary) {
+        var wsFile = SESSION_STORE.resolve(sessionId).resolve("workspace.yaml");
+        if (!Files.isRegularFile(wsFile)) {
+            LOG.debug("workspace.yaml not found for {}", sessionId);
+            return;
+        }
+        try {
+            var lines = Files.readAllLines(wsFile);
+            boolean found = false;
+            for (int i = 0; i < lines.size(); i++) {
+                if (lines.get(i).startsWith("summary:")) {
+                    lines.set(i, "summary: " + newSummary);
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                lines.add("summary: " + newSummary);
+            }
+            Files.write(wsFile, lines);
+            LOG.info("Updated summary for session {}: {}", sessionId, newSummary);
+        } catch (IOException e) {
+            LOG.error("Failed to update summary for session {}", sessionId, e);
+        }
+    }
+
+    /**
      * Delete a session's directory from disk.
      * @return true if successfully deleted, false if not found or error
      */
