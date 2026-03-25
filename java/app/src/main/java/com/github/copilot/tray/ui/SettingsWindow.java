@@ -234,6 +234,7 @@ public class SettingsWindow {
                                 }
                                 Platform.runLater(() -> {
                                     deleteProgress.setVisible(false);
+                                    actionBar.setDisable(false);
                                     sessionTable.getSelectionModel().clearSelection();
                                     updateActionButtons(0);
                                 });
