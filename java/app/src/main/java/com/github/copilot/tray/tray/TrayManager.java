@@ -214,7 +214,10 @@ public class TrayManager {
         }
         sessionMenu.add(actionItem("Delete", e ->
                 sdkBridge.deleteSession(session.id())
-                        .thenRun(() -> {
+                        .whenComplete((v, ex) -> {
+                            if (ex != null) {
+                                LOG.warn("SDK delete failed for session {}, proceeding with disk delete", session.id(), ex);
+                            }
                             SessionDiskReader.deleteFromDisk(session.id());
                             sessionManager.removeSession(session.id());
                         })));

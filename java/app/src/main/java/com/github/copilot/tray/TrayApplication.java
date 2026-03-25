@@ -39,11 +39,13 @@ public class TrayApplication {
         this.notifier = new Notifier();
         this.settingsWindow = new SettingsWindow(sessionManager, configStore, sdkBridge,
                 sessionId -> {
-                    sdkBridge.deleteSession(sessionId)
-                            .thenRun(() -> {
-                                SessionDiskReader.deleteFromDisk(sessionId);
-                                sessionManager.removeSession(sessionId);
-                            });
+                    try {
+                        sdkBridge.deleteSession(sessionId).join();
+                    } catch (Exception ex) {
+                        LOG.warn("SDK delete failed for session {}, proceeding with disk delete", sessionId, ex);
+                    }
+                    SessionDiskReader.deleteFromDisk(sessionId);
+                    sessionManager.removeSession(sessionId);
                 },
                 sessionId -> {
                     var session = sessionManager.getSession(sessionId);
