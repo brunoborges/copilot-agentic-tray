@@ -15,12 +15,12 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Real-time usage dashboard built with Hansolo TilesFX.
- * Top: session table. Bottom: TilesFX detail for selected session.
+ * Supports filtering by working directory.
  */
 public class UsageDashboard extends VBox {
 
@@ -28,12 +28,18 @@ public class UsageDashboard extends VBox {
     private static final double TILE_H = 180;
     private static final double SMALL_H = 130;
 
+    private static final String ALL_DIRECTORIES = "All Directories";
+
     private static final Color COLOR_SYSTEM = Color.web("#7b8cde");
     private static final Color COLOR_MSGS   = Color.web("#c0c0c0");
     private static final Color COLOR_FREE   = Color.web("#4a4a6a");
     private static final Color COLOR_BUFFER = Color.web("#8a8aaa");
 
     private final SessionManager sessionManager;
+
+    // Directory filter
+    private final ComboBox<String> directoryFilter = new ComboBox<>();
+    private String selectedDirectoryFilter = ALL_DIRECTORIES;
 
     // Session table
     private final TableView<SessionSnapshot> sessionTable = new TableView<>();
@@ -62,9 +68,9 @@ public class UsageDashboard extends VBox {
     private final Tile activeSessionsTile;
     private final Tile totalTokensTile;
 
-    // Currently selected
     private SessionSnapshot selectedSession;
-    private boolean refreshing; // guard to suppress selection listener during refresh
+    private boolean refreshing;
+    private List<SessionSnapshot> allSessions = List.of(); // unfiltered
 
     public UsageDashboard(SessionManager sessionManager) {
         this.sessionManager = sessionManager;
@@ -72,6 +78,17 @@ public class UsageDashboard extends VBox {
         setSpacing(10);
         setPadding(new Insets(10));
         setStyle("-fx-background-color: #1a1a2e;");
+
+        // --- Directory filter ---
+        directoryFilter.setPrefWidth(350);
+        directoryFilter.setItems(FXCollections.observableArrayList(ALL_DIRECTORIES));
+        directoryFilter.setValue(ALL_DIRECTORIES);
+        directoryFilter.setOnAction(e -> {
+            selectedDirectoryFilter = directoryFilter.getValue();
+            applyFilter();
+        });
+        var filterRow = new HBox(8, sectionLabel("Directory:"), directoryFilter);
+        filterRow.setAlignment(Pos.CENTER_LEFT);
 
         // --- Session table ---
         buildSessionTable();
@@ -148,13 +165,13 @@ public class UsageDashboard extends VBox {
                 sectionLabel("Selected Session"), detailRow,
                 sectionLabel("Context Breakdown"), breakdownRow,
                 new Separator(),
-                sectionLabel("Aggregate (All Sessions)"), aggregateRow);
+                sectionLabel("Aggregate (Filtered Sessions)"), aggregateRow);
 
         var tilesScroll = new ScrollPane(tilesPane);
         tilesScroll.setFitToWidth(true);
         tilesScroll.setStyle("-fx-background: #1a1a2e; -fx-background-color: #1a1a2e;");
 
-        getChildren().addAll(sectionLabel("Sessions"), sessionTable, tilesScroll);
+        getChildren().addAll(filterRow, sectionLabel("Sessions"), sessionTable, tilesScroll);
         VBox.setVgrow(tilesScroll, Priority.ALWAYS);
     }
 
@@ -217,17 +234,17 @@ public class UsageDashboard extends VBox {
         msgsCol.setPrefWidth(50);
 
         var dirCol = new TableColumn<SessionSnapshot, String>("Directory");
-        dirCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().workingDirectory()));
+        dirCol.setCellValueFactory(cd -> new SimpleStringProperty(
+                SettingsWindow.shortenPath(cd.getValue().workingDirectory())));
         dirCol.setPrefWidth(180);
 
         sessionTable.getColumns().addAll(nameCol, modelCol, statusCol, locCol,
                 tokensCol, pctCol, msgsCol, dirCol);
         sessionTable.setPlaceholder(new Label("No sessions available."));
 
-        // Selection drives the detail tiles
         sessionTable.getSelectionModel().selectedItemProperty()
                 .addListener((obs, old, selected) -> {
-                    if (refreshing) return; // skip during bulk refresh
+                    if (refreshing) return;
                     selectedSession = selected;
                     if (selected != null) {
                         updateDetailTiles(selected);
@@ -240,53 +257,83 @@ public class UsageDashboard extends VBox {
     /** Refresh from session data. Safe to call from any thread. */
     public void refresh(Collection<SessionSnapshot> sessions) {
         Platform.runLater(() -> {
-            var list = List.copyOf(sessions);
-            var previousId = selectedSession != null ? selectedSession.id() : null;
-            int scrollIndex = sessionTable.getSelectionModel().getSelectedIndex();
-
-            // Suppress selection listener during item replacement
-            refreshing = true;
-            sessionTable.setItems(FXCollections.observableArrayList(list));
-
-            // Restore selection by session ID
-            SessionSnapshot restoredSession = null;
-            if (previousId != null) {
-                for (int i = 0; i < list.size(); i++) {
-                    if (list.get(i).id().equals(previousId)) {
-                        sessionTable.getSelectionModel().select(i);
-                        sessionTable.scrollTo(i);
-                        restoredSession = list.get(i);
-                        break;
-                    }
-                }
-            }
-            // If previous session is gone, try same index position
-            if (restoredSession == null && !list.isEmpty()) {
-                int idx = Math.min(scrollIndex, list.size() - 1);
-                if (idx >= 0) {
-                    sessionTable.getSelectionModel().select(idx);
-                    sessionTable.scrollTo(idx);
-                    restoredSession = list.get(idx);
-                } else {
-                    sessionTable.getSelectionModel().selectFirst();
-                    restoredSession = list.getFirst();
-                }
-            }
-            refreshing = false;
-
-            // Update tiles directly with the restored session (no animation flicker)
-            selectedSession = restoredSession;
-            if (restoredSession != null) {
-                updateDetailTiles(restoredSession);
-            }
-            updateAggregateTiles(list);
+            allSessions = List.copyOf(sessions);
+            updateDirectoryFilter();
+            applyFilter();
         });
+    }
+
+    private void updateDirectoryFilter() {
+        var dirs = allSessions.stream()
+                .map(SessionSnapshot::workingDirectory)
+                .distinct()
+                .sorted()
+                .toList();
+        var items = new ArrayList<String>();
+        items.add(ALL_DIRECTORIES);
+        for (var d : dirs) {
+            items.add(d);
+        }
+        var prev = directoryFilter.getValue();
+        directoryFilter.setItems(FXCollections.observableArrayList(items));
+        if (prev != null && items.contains(prev)) {
+            directoryFilter.setValue(prev);
+        } else {
+            directoryFilter.setValue(ALL_DIRECTORIES);
+        }
+        selectedDirectoryFilter = directoryFilter.getValue();
+    }
+
+    private void applyFilter() {
+        var filtered = allSessions;
+        if (!ALL_DIRECTORIES.equals(selectedDirectoryFilter) && selectedDirectoryFilter != null) {
+            filtered = allSessions.stream()
+                    .filter(s -> selectedDirectoryFilter.equals(s.workingDirectory()))
+                    .toList();
+        }
+
+        var list = List.copyOf(filtered);
+        var previousId = selectedSession != null ? selectedSession.id() : null;
+        int scrollIndex = sessionTable.getSelectionModel().getSelectedIndex();
+
+        refreshing = true;
+        sessionTable.setItems(FXCollections.observableArrayList(list));
+
+        // Restore selection by session ID
+        SessionSnapshot restoredSession = null;
+        if (previousId != null) {
+            for (int i = 0; i < list.size(); i++) {
+                if (list.get(i).id().equals(previousId)) {
+                    sessionTable.getSelectionModel().select(i);
+                    sessionTable.scrollTo(i);
+                    restoredSession = list.get(i);
+                    break;
+                }
+            }
+        }
+        if (restoredSession == null && !list.isEmpty()) {
+            int idx = Math.min(scrollIndex, list.size() - 1);
+            if (idx >= 0) {
+                sessionTable.getSelectionModel().select(idx);
+                sessionTable.scrollTo(idx);
+                restoredSession = list.get(idx);
+            } else {
+                sessionTable.getSelectionModel().selectFirst();
+                restoredSession = list.getFirst();
+            }
+        }
+        refreshing = false;
+
+        selectedSession = restoredSession;
+        if (restoredSession != null) {
+            updateDetailTiles(restoredSession);
+        }
+        updateAggregateTiles(list);
     }
 
     private void updateDetailTiles(SessionSnapshot session) {
         var u = session.usage();
 
-        // Donut
         systemToolsData.setValue(u.systemToolsTokens());
         messagesData.setValue(u.messagesTokens());
         freeSpaceData.setValue(u.freeSpaceTokens());

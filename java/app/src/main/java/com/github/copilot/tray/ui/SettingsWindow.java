@@ -5,44 +5,47 @@ import com.github.copilot.tray.session.SessionManager;
 import com.github.copilot.tray.session.SessionSnapshot;
 import com.github.copilot.tray.session.SessionStatus;
 import javafx.application.Platform;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 
-import java.util.Collection;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 /**
  * JavaFX settings window launched from the system tray.
- * Uses programmatic UI construction (no FXML) for simplicity in v1.
+ * Directory-first layout: sessions are organized by working directory.
  */
 public class SettingsWindow {
 
+    private static final DateTimeFormatter DATE_FMT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
+
     private final SessionManager sessionManager;
     private final ConfigStore configStore;
-    private final java.util.function.Consumer<String> deleteHandler;
-    private final java.util.function.Consumer<String> resumeHandler;
+    private final Consumer<String> deleteHandler;
+    private final Consumer<String> resumeHandler;
     private Stage stage;
     private TabPane tabPane;
 
-    // Session tab controls
-    private TreeView<String> sessionTree;
+    // Sessions tab — directory-first master-detail
+    private ToggleGroup locationToggle;
+    private ListView<String> directoryList;
+    private TableView<SessionSnapshot> sessionTable;
     private Label detailLabel;
     private HBox actionBar;
-
-    // Track currently selected session for actions
     private SessionSnapshot selectedSession;
-
-    // Track tree expansion state across refreshes
-    private final java.util.Set<String> expandedTreeNodes = new java.util.HashSet<>();
-    // Initialize with default expansion state
-    {
-        expandedTreeNodes.add("Sessions");
-        expandedTreeNodes.add("Local Sessions");
-        expandedTreeNodes.add("Remote Sessions");
-        expandedTreeNodes.add("Active");
-    }
+    private String selectedDirectory; // track across refreshes
+    private boolean refreshing;
 
     // Usage dashboard
     private UsageDashboard usageDashboard;
@@ -55,56 +58,37 @@ public class SettingsWindow {
     private CheckBox autoStartCheckBox;
 
     public SettingsWindow(SessionManager sessionManager, ConfigStore configStore,
-                          java.util.function.Consumer<String> deleteHandler,
-                          java.util.function.Consumer<String> resumeHandler) {
+                          Consumer<String> deleteHandler, Consumer<String> resumeHandler) {
         this.sessionManager = sessionManager;
         this.configStore = configStore;
         this.deleteHandler = deleteHandler;
         this.resumeHandler = resumeHandler;
     }
 
-    /**
-     * Show (or bring to front) the settings window.
-     * Must be called on the JavaFX Application Thread.
-     */
     public void show() {
         Platform.runLater(() -> {
-            if (stage == null) {
-                stage = createStage();
-            }
-            refreshSessionTree(sessionManager.getSessions());
+            if (stage == null) stage = createStage();
+            refreshSessions(sessionManager.getSessions());
             stage.show();
             stage.toFront();
         });
     }
 
-    /**
-     * Show the settings window with the Sessions tab selected.
-     */
     public void showSessionsTab() {
         Platform.runLater(() -> {
-            if (stage == null) {
-                stage = createStage();
-            }
-            refreshSessionTree(sessionManager.getSessions());
-            if (tabPane != null) {
-                tabPane.getSelectionModel().select(0); // Sessions is first tab
-            }
+            if (stage == null) stage = createStage();
+            refreshSessions(sessionManager.getSessions());
+            if (tabPane != null) tabPane.getSelectionModel().select(0);
             stage.show();
             stage.toFront();
         });
     }
 
-    /**
-     * Refresh session data in the settings window.
-     */
     public void onSessionChange(Collection<SessionSnapshot> sessions) {
         if (stage != null && stage.isShowing()) {
             Platform.runLater(() -> {
-                refreshSessionTree(sessions);
-                if (usageDashboard != null) {
-                    usageDashboard.refresh(sessions);
-                }
+                refreshSessions(sessions);
+                if (usageDashboard != null) usageDashboard.refresh(sessions);
             });
         }
     }
@@ -112,7 +96,6 @@ public class SettingsWindow {
     private Stage createStage() {
         tabPane = new TabPane();
         tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
-
         tabPane.getTabs().addAll(
                 createSessionsTab(),
                 createUsageTab(),
@@ -120,267 +103,330 @@ public class SettingsWindow {
                 createPreferencesTab(),
                 createAboutTab()
         );
-
-        var scene = new Scene(tabPane, 1000, 650);
+        var scene = new Scene(tabPane, 1100, 700);
         var s = new Stage();
-        s.setTitle("Copilot CLI Tray — Settings");
+        s.setTitle("Copilot CLI Tray — Dashboard");
         s.setScene(scene);
-        s.setOnCloseRequest(e -> {
-            e.consume();
-            s.hide();
-        });
+        s.setOnCloseRequest(e -> { e.consume(); s.hide(); });
         return s;
     }
 
-    // --- Sessions Tab (TreeView with grouped local/remote + active/archived) ---
+    // =====================================================================
+    // Sessions Tab — Directory-first master-detail
+    // =====================================================================
 
     private Tab createSessionsTab() {
-        sessionTree = new TreeView<>();
-        sessionTree.setShowRoot(false);
-        sessionTree.setPrefWidth(300);
-        sessionTree.getSelectionModel().selectedItemProperty()
-                .addListener((obs, old, selected) -> onTreeSelection(selected));
+        // --- Top: Local / Remote toggle ---
+        var localBtn = new ToggleButton("Local");
+        var remoteBtn = new ToggleButton("Remote");
+        locationToggle = new ToggleGroup();
+        localBtn.setToggleGroup(locationToggle);
+        remoteBtn.setToggleGroup(locationToggle);
+        localBtn.setSelected(true);
+        localBtn.setUserData("local");
+        remoteBtn.setUserData("remote");
+        // Prevent deselecting both
+        locationToggle.selectedToggleProperty().addListener((obs, old, nv) -> {
+            if (nv == null) old.setSelected(true);
+        });
+        locationToggle.selectedToggleProperty().addListener((obs, old, nv) -> {
+            if (!refreshing) refreshSessions(sessionManager.getSessions());
+        });
+        var toggleBar = new HBox(4, localBtn, remoteBtn);
+        toggleBar.setPadding(new Insets(6));
+        toggleBar.setAlignment(Pos.CENTER_LEFT);
 
+        // --- Left: directory list ---
+        directoryList = new ListView<>();
+        directoryList.setPrefWidth(280);
+        directoryList.setPlaceholder(new Label("No directories found."));
+        directoryList.setCellFactory(lv -> new DirectoryCell());
+        directoryList.getSelectionModel().selectedItemProperty()
+                .addListener((obs, old, nv) -> {
+                    if (refreshing) return;
+                    selectedDirectory = nv;
+                    onDirectorySelected(nv);
+                });
+
+        var leftBox = new VBox(toggleBar, directoryList);
+        VBox.setVgrow(directoryList, Priority.ALWAYS);
+
+        // --- Right top: session table ---
+        sessionTable = new TableView<>();
+        sessionTable.setPlaceholder(new Label("Select a directory."));
+        buildSessionTableColumns();
+        sessionTable.getSelectionModel().selectedItemProperty()
+                .addListener((obs, old, nv) -> {
+                    if (refreshing) return;
+                    selectedSession = nv;
+                    if (nv != null) {
+                        showSessionDetail(nv);
+                        actionBar.setDisable(false);
+                    } else {
+                        detailLabel.setText("Select a session to view details.");
+                        actionBar.setDisable(true);
+                    }
+                });
+
+        // --- Right bottom: detail + actions ---
         detailLabel = new Label("Select a session to view details.");
         detailLabel.setWrapText(true);
         detailLabel.setPadding(new Insets(10));
+        detailLabel.setStyle("-fx-font-family: monospace; -fx-font-size: 12px;");
 
-        // Action buttons
         var resumeBtn = new Button("Resume in Terminal");
-        resumeBtn.setOnAction(e -> {
-            if (selectedSession != null) resumeHandler.accept(selectedSession.id());
-        });
-
+        resumeBtn.setOnAction(e -> { if (selectedSession != null) resumeHandler.accept(selectedSession.id()); });
         var cancelBtn = new Button("Cancel");
-        cancelBtn.setOnAction(e -> {
-            if (selectedSession != null) deleteHandler.accept(selectedSession.id());
-        });
-
+        cancelBtn.setOnAction(e -> { if (selectedSession != null) deleteHandler.accept(selectedSession.id()); });
         var deleteBtn = new Button("Delete");
         deleteBtn.setStyle("-fx-text-fill: red;");
         deleteBtn.setOnAction(e -> {
             if (selectedSession != null) {
-                var confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                new Alert(Alert.AlertType.CONFIRMATION,
                         "Delete session '" + selectedSession.name() + "'?",
-                        ButtonType.YES, ButtonType.NO);
-                confirm.setHeaderText(null);
-                confirm.showAndWait().ifPresent(bt -> {
-                    if (bt == ButtonType.YES) {
-                        deleteHandler.accept(selectedSession.id());
-                    }
-                });
+                        ButtonType.YES, ButtonType.NO)
+                        .showAndWait().ifPresent(bt -> {
+                            if (bt == ButtonType.YES) deleteHandler.accept(selectedSession.id());
+                        });
             }
         });
-
         actionBar = new HBox(8, resumeBtn, cancelBtn, deleteBtn);
-        actionBar.setPadding(new Insets(8));
+        actionBar.setPadding(new Insets(6));
         actionBar.setDisable(true);
 
         var detailScroll = new ScrollPane(detailLabel);
         detailScroll.setFitToWidth(true);
         detailScroll.setFitToHeight(true);
+        detailScroll.setPrefHeight(200);
 
-        var rightPane = new VBox(detailScroll, actionBar);
-        VBox.setVgrow(detailScroll, Priority.ALWAYS);
+        var rightPane = new VBox(sessionTable, new Separator(), detailScroll, actionBar);
+        VBox.setVgrow(sessionTable, Priority.ALWAYS);
 
-        var split = new SplitPane(sessionTree, rightPane);
-        split.setDividerPositions(0.38);
+        var split = new SplitPane(leftBox, rightPane);
+        split.setDividerPositions(0.28);
 
         return new Tab("Sessions", split);
     }
 
-    private void onTreeSelection(TreeItem<String> item) {
-        if (item == null || item.getValue() == null) {
-            selectedSession = null;
-            detailLabel.setText("Select a session to view details.");
-            actionBar.setDisable(true);
+    @SuppressWarnings("unchecked")
+    private void buildSessionTableColumns() {
+        var nameCol = new TableColumn<SessionSnapshot, String>("Name");
+        nameCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().name()));
+        nameCol.setPrefWidth(180);
+
+        var modelCol = new TableColumn<SessionSnapshot, String>("Model");
+        modelCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().model()));
+        modelCol.setPrefWidth(120);
+
+        var statusCol = new TableColumn<SessionSnapshot, String>("Status");
+        statusCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().status().name()));
+        statusCol.setPrefWidth(85);
+        statusCol.setCellFactory(col -> new TableCell<>() {
+            @Override protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) { setText(null); setStyle(""); return; }
+                setText(item);
+                setStyle("-fx-text-fill: " + statusColor(item) + "; -fx-font-weight: bold;");
+            }
+        });
+
+        var pctCol = new TableColumn<SessionSnapshot, String>("Usage");
+        pctCol.setCellValueFactory(cd ->
+                new SimpleStringProperty(String.format("%.0f%%", cd.getValue().usage().tokenUsagePercent())));
+        pctCol.setPrefWidth(60);
+
+        var msgsCol = new TableColumn<SessionSnapshot, String>("Msgs");
+        msgsCol.setCellValueFactory(cd ->
+                new SimpleStringProperty(String.valueOf(cd.getValue().usage().messagesCount())));
+        msgsCol.setPrefWidth(50);
+
+        var createdCol = new TableColumn<SessionSnapshot, String>("Created");
+        createdCol.setCellValueFactory(cd ->
+                new SimpleStringProperty(cd.getValue().createdAt() != null
+                        ? DATE_FMT.format(cd.getValue().createdAt()) : ""));
+        createdCol.setPrefWidth(130);
+
+        sessionTable.getColumns().addAll(nameCol, modelCol, statusCol, pctCol, msgsCol, createdCol);
+    }
+
+    private void onDirectorySelected(String directory) {
+        if (directory == null) {
+            sessionTable.setItems(FXCollections.emptyObservableList());
             return;
         }
+        // Strip the badge suffix to get the real directory path
+        var dirPath = stripBadge(directory);
+        boolean isRemote = isRemoteSelected();
+        var sessions = sessionManager.getSessions().stream()
+                .filter(s -> s.remote() == isRemote)
+                .filter(s -> dirPath.equals(s.workingDirectory()))
+                .sorted(Comparator.comparing(SessionSnapshot::lastActivityAt).reversed())
+                .toList();
+        sessionTable.setItems(FXCollections.observableArrayList(sessions));
+        if (!sessions.isEmpty()) sessionTable.getSelectionModel().selectFirst();
+    }
 
-        // Only leaf nodes (no children) represent sessions
-        if (!item.isLeaf()) {
-            selectedSession = null;
-            detailLabel.setText("Select a session to view details.");
-            actionBar.setDisable(true);
-            return;
+    // =====================================================================
+    // Refresh — rebuild directory list, restore selection
+    // =====================================================================
+
+    private void refreshSessions(Collection<SessionSnapshot> sessions) {
+        if (directoryList == null) return;
+
+        refreshing = true;
+        boolean isRemote = isRemoteSelected();
+        String previousDir = selectedDirectory != null ? stripBadge(selectedDirectory) : null;
+        String previousSessionId = selectedSession != null ? selectedSession.id() : null;
+
+        // Group by directory, filtered by local/remote
+        var filtered = sessions.stream()
+                .filter(s -> s.remote() == isRemote)
+                .collect(Collectors.groupingBy(SessionSnapshot::workingDirectory,
+                        TreeMap::new, Collectors.toList()));
+
+        // Build directory labels with badges
+        var dirLabels = new ArrayList<String>();
+        for (var entry : filtered.entrySet()) {
+            var dir = entry.getKey();
+            var list = entry.getValue();
+            long activeCount = list.stream()
+                    .filter(s -> s.status() != SessionStatus.ARCHIVED && s.status() != SessionStatus.CORRUPTED)
+                    .count();
+            long corruptedCount = list.stream()
+                    .filter(s -> s.status() == SessionStatus.CORRUPTED).count();
+            var badge = new StringBuilder();
+            badge.append(dir).append("  [").append(list.size()).append("]");
+            if (activeCount > 0) badge.append(" ●");
+            if (corruptedCount > 0) badge.append(" ⚠");
+            dirLabels.add(badge.toString());
         }
 
-        // The user data is set to session ID in refreshSessionTree
-        var sessionId = (String) item.getValue();
-        // Match by trying to find a session whose tree label matches
-        selectedSession = sessionManager.getSessions().stream()
-                .filter(s -> buildTreeLabel(s).equals(sessionId))
-                .findFirst()
-                .orElse(null);
+        directoryList.setItems(FXCollections.observableArrayList(dirLabels));
 
-        if (selectedSession == null) {
-            detailLabel.setText("Session not found.");
-            actionBar.setDisable(true);
-            return;
+        // Restore directory selection
+        if (previousDir != null) {
+            for (int i = 0; i < dirLabels.size(); i++) {
+                if (previousDir.equals(stripBadge(dirLabels.get(i)))) {
+                    directoryList.getSelectionModel().select(i);
+                    selectedDirectory = dirLabels.get(i);
+                    break;
+                }
+            }
         }
+        if (directoryList.getSelectionModel().getSelectedItem() == null && !dirLabels.isEmpty()) {
+            directoryList.getSelectionModel().selectFirst();
+            selectedDirectory = dirLabels.getFirst();
+        }
+        refreshing = false;
 
-        actionBar.setDisable(false);
-        showSessionDetail(selectedSession);
+        // Populate session table for selected directory
+        onDirectorySelected(directoryList.getSelectionModel().getSelectedItem());
+
+        // Restore session selection
+        if (previousSessionId != null) {
+            for (int i = 0; i < sessionTable.getItems().size(); i++) {
+                if (sessionTable.getItems().get(i).id().equals(previousSessionId)) {
+                    sessionTable.getSelectionModel().select(i);
+                    return;
+                }
+            }
+        }
+    }
+
+    private boolean isRemoteSelected() {
+        if (locationToggle == null || locationToggle.getSelectedToggle() == null) return false;
+        return "remote".equals(locationToggle.getSelectedToggle().getUserData());
     }
 
     private void showSessionDetail(SessionSnapshot session) {
         var sb = new StringBuilder();
-        sb.append("ID: ").append(session.id()).append("\n");
-        sb.append("Name: ").append(session.name()).append("\n");
-        sb.append("Model: ").append(session.model()).append("\n");
-        sb.append("Status: ").append(session.status()).append("\n");
-        sb.append("Location: ").append(session.remote() ? "Remote" : "Local").append("\n");
-        sb.append("Working Directory: ").append(session.workingDirectory()).append("\n");
-        sb.append("Created: ").append(session.createdAt()).append("\n");
-        sb.append("Last Activity: ").append(session.lastActivityAt()).append("\n\n");
+        sb.append("ID:          ").append(session.id()).append("\n");
+        sb.append("Name:        ").append(session.name()).append("\n");
+        sb.append("Model:       ").append(session.model()).append("\n");
+        sb.append("Status:      ").append(session.status()).append("\n");
+        sb.append("Location:    ").append(session.remote() ? "Remote" : "Local").append("\n");
+        sb.append("Directory:   ").append(session.workingDirectory()).append("\n");
+        if (session.createdAt() != null)
+            sb.append("Created:     ").append(DATE_FMT.format(session.createdAt())).append("\n");
+        if (session.lastActivityAt() != null)
+            sb.append("Last Active: ").append(DATE_FMT.format(session.lastActivityAt())).append("\n");
+        sb.append("\n");
 
         sb.append("— Usage —\n");
-        sb.append("Tokens: ").append(session.usage().currentTokens())
+        sb.append("Tokens:   ").append(session.usage().currentTokens())
                 .append(" / ").append(session.usage().tokenLimit())
-                .append(" (").append((int) session.usage().tokenUsagePercent()).append("%)\n");
-        sb.append("Messages: ").append(session.usage().messagesCount()).append("\n\n");
+                .append("  (").append((int) session.usage().tokenUsagePercent()).append("%)\n");
+        sb.append("Messages: ").append(session.usage().messagesCount()).append("\n");
 
         if (!session.subagents().isEmpty()) {
-            sb.append("— Subagents —\n");
+            sb.append("\n— Subagents —\n");
             for (var sub : session.subagents()) {
                 sb.append("  ").append(sub.id())
                         .append(" [").append(sub.status()).append("] ")
                         .append(sub.description()).append("\n");
             }
         }
-
         if (session.pendingPermission()) {
             sb.append("\n⚠ Permission request pending\n");
         }
-
         detailLabel.setText(sb.toString());
     }
 
-    private void refreshSessionTree(Collection<SessionSnapshot> sessions) {
-        if (sessionTree == null) return;
-
-        // Save current selection (by session ID)
-        String selectedId = selectedSession != null ? selectedSession.id() : null;
-
-        // Save expansion state from current tree
-        saveTreeExpansionState(sessionTree.getRoot());
-
-        var root = new TreeItem<String>("Sessions");
-
-        var local = sessions.stream().filter(s -> !s.remote()).toList();
-        var remote = sessions.stream().filter(SessionSnapshot::remote).toList();
-
-        root.getChildren().add(buildGroupNode("Local Sessions", local));
-        root.getChildren().add(buildGroupNode("Remote Sessions", remote));
-
-        root.setExpanded(true);
-        sessionTree.setRoot(root);
-
-        // Restore expansion state
-        restoreTreeExpansionState(root);
-
-        // Restore selection
-        if (selectedId != null) {
-            selectTreeItemBySessionId(root, selectedId);
-        }
+    /** Strip badge suffix like "  [3] ●" from directory label to get the path. */
+    static String stripBadge(String label) {
+        if (label == null) return null;
+        int idx = label.indexOf("  [");
+        return idx > 0 ? label.substring(0, idx) : label;
     }
 
-    /** Walk the tree and record which nodes are expanded (by prefix of their label). */
-    private void saveTreeExpansionState(TreeItem<String> node) {
-        if (node == null) return;
-        var key = treeNodeKey(node);
-        if (key != null) {
-            if (node.isExpanded()) expandedTreeNodes.add(key);
-            else expandedTreeNodes.remove(key);
-        }
-        for (var child : node.getChildren()) {
-            saveTreeExpansionState(child);
-        }
-    }
+    // =====================================================================
+    // Directory list cell — styled with icons
+    // =====================================================================
 
-    /** Restore expansion state from the saved set. */
-    private void restoreTreeExpansionState(TreeItem<String> node) {
-        if (node == null) return;
-        var key = treeNodeKey(node);
-        if (key != null && !node.isLeaf()) {
-            node.setExpanded(expandedTreeNodes.contains(key));
-        }
-        for (var child : node.getChildren()) {
-            restoreTreeExpansionState(child);
-        }
-    }
-
-    /** Stable key for a tree node — use the structural prefix (e.g. "Active", "Local Sessions"). */
-    private static String treeNodeKey(TreeItem<String> node) {
-        if (node == null || node.getValue() == null) return null;
-        // Group nodes have labels like "Local Sessions (5)" — strip count
-        var label = node.getValue();
-        int paren = label.indexOf(" (");
-        return paren > 0 ? label.substring(0, paren) : label;
-    }
-
-    /** Find and select a tree leaf by matching session label to a session ID. */
-    private void selectTreeItemBySessionId(TreeItem<String> node, String sessionId) {
-        if (node.isLeaf() && node.getValue() != null) {
-            var match = sessionManager.getSessions().stream()
-                    .filter(s -> s.id().equals(sessionId) && buildTreeLabel(s).equals(node.getValue()))
-                    .findFirst();
-            if (match.isPresent()) {
-                sessionTree.getSelectionModel().select(node);
+    private static class DirectoryCell extends ListCell<String> {
+        @Override protected void updateItem(String item, boolean empty) {
+            super.updateItem(item, empty);
+            if (empty || item == null) {
+                setText(null); setGraphic(null); setStyle("");
                 return;
             }
-        }
-        for (var child : node.getChildren()) {
-            selectTreeItemBySessionId(child, sessionId);
+            var dirPath = stripBadge(item);
+            // Show short path: last 2 components
+            var shortPath = shortenPath(dirPath);
+            var badge = item.substring(dirPath.length());
+            setText("📁 " + shortPath + badge);
+            setStyle("-fx-font-size: 12px;");
+            setTooltip(new Tooltip(dirPath));
         }
     }
 
-    private TreeItem<String> buildGroupNode(String label, java.util.List<SessionSnapshot> sessions) {
-        var active = sessions.stream()
-                .filter(s -> s.status() != SessionStatus.ARCHIVED && s.status() != SessionStatus.CORRUPTED).toList();
-        var archived = sessions.stream()
-                .filter(s -> s.status() == SessionStatus.ARCHIVED).toList();
-        var corrupted = sessions.stream()
-                .filter(s -> s.status() == SessionStatus.CORRUPTED).toList();
-
-        var group = new TreeItem<>(label + " (" + sessions.size() + ")");
-        // Expansion state is restored by restoreTreeExpansionState()
-
-        var activeNode = new TreeItem<>("Active (" + active.size() + ")");
-        for (var s : active) {
-            activeNode.getChildren().add(new TreeItem<>(buildTreeLabel(s)));
+    /** Shorten a path to show ~/relative or last 2 components. */
+    static String shortenPath(String path) {
+        if (path == null || path.isEmpty()) return "(unknown)";
+        var home = System.getProperty("user.home");
+        if (home != null && path.startsWith(home)) {
+            return "~" + path.substring(home.length());
         }
-        group.getChildren().add(activeNode);
-
-        var archivedNode = new TreeItem<>("Archived (" + archived.size() + ")");
-        for (var s : archived) {
-            archivedNode.getChildren().add(new TreeItem<>(buildTreeLabel(s)));
-        }
-        group.getChildren().add(archivedNode);
-
-        if (!corrupted.isEmpty()) {
-            var corruptedNode = new TreeItem<>("Corrupted (" + corrupted.size() + ")");
-            for (var s : corrupted) {
-                corruptedNode.getChildren().add(new TreeItem<>(buildTreeLabel(s)));
-            }
-            group.getChildren().add(corruptedNode);
-        }
-
-        return group;
+        // Show last 2 components
+        var parts = path.replace('\\', '/').split("/");
+        if (parts.length <= 2) return path;
+        return "…/" + parts[parts.length - 2] + "/" + parts[parts.length - 1];
     }
 
-    private static String buildTreeLabel(SessionSnapshot s) {
-        var label = s.name();
-        if (!"unknown".equals(s.model())) {
-            label += " [" + s.model() + "]";
-        }
-        if (s.usage().tokenUsagePercent() > 0) {
-            label += " — " + (int) s.usage().tokenUsagePercent() + "%";
-        }
-        return label;
+    private static String statusColor(String statusName) {
+        return switch (SessionStatus.valueOf(statusName)) {
+            case ACTIVE -> "#4488ff";
+            case BUSY -> "#ff8844";
+            case IDLE -> "#44cc44";
+            case ERROR -> "#ff4444";
+            case ARCHIVED -> "#888888";
+            case CORRUPTED -> "#cc44cc";
+        };
     }
 
-    // --- Usage Tab (TilesFX Dashboard) ---
+    // =====================================================================
+    // Usage Tab
+    // =====================================================================
 
     private Tab createUsageTab() {
         usageDashboard = new UsageDashboard(sessionManager);
@@ -388,23 +434,25 @@ public class SettingsWindow {
         return new Tab("Usage", usageDashboard);
     }
 
-    // --- Prune Tab ---
+    // =====================================================================
+    // Prune Tab
+    // =====================================================================
 
     private Tab createPruneTab() {
         var prunePanel = new PrunePanel(new com.github.copilot.tray.session.SessionPruner(), resumeHandler);
         return new Tab("Prune", prunePanel);
     }
 
-    // --- Preferences Tab ---
+    // =====================================================================
+    // Preferences Tab
+    // =====================================================================
 
     private Tab createPreferencesTab() {
         var config = configStore.getConfig();
-
         var grid = new GridPane();
         grid.setPadding(new Insets(15));
         grid.setHgap(10);
         grid.setVgap(10);
-
         int row = 0;
 
         grid.add(new Label("Copilot CLI Path:"), 0, row);
@@ -448,12 +496,13 @@ public class SettingsWindow {
         configStore.save();
     }
 
-    // --- About Tab ---
+    // =====================================================================
+    // About Tab
+    // =====================================================================
 
     private Tab createAboutTab() {
         var content = new VBox(10);
         content.setPadding(new Insets(15));
-
         content.getChildren().addAll(
                 new Label("Copilot CLI Tray"),
                 new Label("Version: 1.0.0-SNAPSHOT"),
@@ -468,18 +517,14 @@ public class SettingsWindow {
                 new Separator(),
                 createHyperlink("GitHub", "https://github.com/brunoborges/copilot-cli-tray")
         );
-
         return new Tab("About", content);
     }
 
     private Hyperlink createHyperlink(String text, String url) {
         var link = new Hyperlink(text + ": " + url);
         link.setOnAction(e -> {
-            try {
-                java.awt.Desktop.getDesktop().browse(java.net.URI.create(url));
-            } catch (Exception ex) {
-                // ignore
-            }
+            try { java.awt.Desktop.getDesktop().browse(java.net.URI.create(url)); }
+            catch (Exception ex) { /* ignore */ }
         });
         return link;
     }

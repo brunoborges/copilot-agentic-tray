@@ -101,7 +101,8 @@ public class PrunePanel extends VBox {
         var toggleGroup = new ToggleGroup();
         flatViewBtn.setToggleGroup(toggleGroup);
         treeViewBtn.setToggleGroup(toggleGroup);
-        flatViewBtn.setSelected(true);
+        flatViewBtn.setSelected(false);
+        treeViewBtn.setSelected(true);
         toggleGroup.selectedToggleProperty().addListener((obs, old, sel) -> switchView(sel == treeViewBtn));
 
         var selectionRow = new HBox(8, deselectAllBtn, selectAllBtn,
@@ -122,8 +123,9 @@ public class PrunePanel extends VBox {
         HBox.setHgrow(statusLabel, Priority.ALWAYS);
 
         buildTreeTable();
-        treeTable.setVisible(false);
-        treeTable.setManaged(false);
+        // Default to tree (By Directory) view
+        table.setVisible(false);
+        table.setManaged(false);
         var viewContainer = new StackPane(table, treeTable);
 
         getChildren().addAll(topRow, summaryLabel, selectionRow, viewContainer, bottomRow);
