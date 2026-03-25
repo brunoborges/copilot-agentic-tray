@@ -342,67 +342,84 @@ public class SettingsWindow {
         if (directoryList == null) return;
 
         refreshing = true;
-        boolean isRemote = isRemoteSelected();
-        String previousDir = selectedDirectory != null ? stripBadge(selectedDirectory) : null;
-        // Save ALL selected session IDs for multi-select restore
-        var previousSelectedIds = sessionTable.getSelectionModel().getSelectedItems().stream()
-                .map(SessionSnapshot::id)
-                .toList();
+        try {
+            boolean isRemote = isRemoteSelected();
+            String previousDir = selectedDirectory != null ? stripBadge(selectedDirectory) : null;
+            // Save ALL selected session IDs for multi-select restore
+            var previousSelectedIds = sessionTable.getSelectionModel().getSelectedItems().stream()
+                    .map(SessionSnapshot::id)
+                    .toList();
 
-        // Group by directory, filtered by local/remote
-        var filtered = sessions.stream()
-                .filter(s -> s.remote() == isRemote)
-                .collect(Collectors.groupingBy(SessionSnapshot::workingDirectory,
-                        TreeMap::new, Collectors.toList()));
+            // Group by directory, filtered by local/remote
+            var filtered = sessions.stream()
+                    .filter(s -> s.remote() == isRemote)
+                    .collect(Collectors.groupingBy(SessionSnapshot::workingDirectory,
+                            TreeMap::new, Collectors.toList()));
 
-        // Build directory labels with badges
-        var dirLabels = new ArrayList<String>();
-        for (var entry : filtered.entrySet()) {
-            var dir = entry.getKey();
-            var list = entry.getValue();
-            long activeCount = list.stream()
-                    .filter(s -> s.status() != SessionStatus.ARCHIVED && s.status() != SessionStatus.CORRUPTED)
-                    .count();
-            long corruptedCount = list.stream()
-                    .filter(s -> s.status() == SessionStatus.CORRUPTED).count();
-            var badge = new StringBuilder();
-            badge.append(dir).append("  [").append(list.size()).append("]");
-            if (activeCount > 0) badge.append(" ●");
-            if (corruptedCount > 0) badge.append(" ⚠");
-            dirLabels.add(badge.toString());
-        }
+            // Build directory labels with badges
+            var dirLabels = new ArrayList<String>();
+            for (var entry : filtered.entrySet()) {
+                var dir = entry.getKey();
+                var list = entry.getValue();
+                long activeCount = list.stream()
+                        .filter(s -> s.status() != SessionStatus.ARCHIVED && s.status() != SessionStatus.CORRUPTED)
+                        .count();
+                long corruptedCount = list.stream()
+                        .filter(s -> s.status() == SessionStatus.CORRUPTED).count();
+                var badge = new StringBuilder();
+                badge.append(dir).append("  [").append(list.size()).append("]");
+                if (activeCount > 0) badge.append(" ●");
+                if (corruptedCount > 0) badge.append(" ⚠");
+                dirLabels.add(badge.toString());
+            }
 
-        directoryList.setItems(FXCollections.observableArrayList(dirLabels));
+            directoryList.setItems(FXCollections.observableArrayList(dirLabels));
 
-        // Restore directory selection
-        if (previousDir != null) {
-            for (int i = 0; i < dirLabels.size(); i++) {
-                if (previousDir.equals(stripBadge(dirLabels.get(i)))) {
-                    directoryList.getSelectionModel().select(i);
-                    selectedDirectory = dirLabels.get(i);
-                    break;
+            // Restore directory selection
+            if (previousDir != null) {
+                for (int i = 0; i < dirLabels.size(); i++) {
+                    if (previousDir.equals(stripBadge(dirLabels.get(i)))) {
+                        directoryList.getSelectionModel().select(i);
+                        selectedDirectory = dirLabels.get(i);
+                        break;
+                    }
                 }
             }
-        }
-        if (directoryList.getSelectionModel().getSelectedItem() == null && !dirLabels.isEmpty()) {
-            directoryList.getSelectionModel().selectFirst();
-            selectedDirectory = dirLabels.getFirst();
-        }
-        refreshing = false;
+            if (directoryList.getSelectionModel().getSelectedItem() == null && !dirLabels.isEmpty()) {
+                directoryList.getSelectionModel().selectFirst();
+                selectedDirectory = dirLabels.getFirst();
+            }
 
-        // Populate session table for selected directory
-        onDirectorySelected(directoryList.getSelectionModel().getSelectedItem());
+            // Populate session table for selected directory
+            onDirectorySelected(directoryList.getSelectionModel().getSelectedItem());
 
-        // Restore session selection (all previously selected IDs)
-        if (!previousSelectedIds.isEmpty()) {
-            var idSet = new HashSet<>(previousSelectedIds);
-            sessionTable.getSelectionModel().clearSelection();
-            for (int i = 0; i < sessionTable.getItems().size(); i++) {
-                if (idSet.contains(sessionTable.getItems().get(i).id())) {
-                    sessionTable.getSelectionModel().select(i);
+            // Restore session selection (all previously selected IDs)
+            if (!previousSelectedIds.isEmpty()) {
+                var idSet = new HashSet<>(previousSelectedIds);
+                sessionTable.getSelectionModel().clearSelection();
+                for (int i = 0; i < sessionTable.getItems().size(); i++) {
+                    if (idSet.contains(sessionTable.getItems().get(i).id())) {
+                        sessionTable.getSelectionModel().select(i);
+                    }
                 }
             }
+
+            // Update the selectedSession reference to the new snapshot (same ID, possibly updated data)
+            var restoredSelection = sessionTable.getSelectionModel().getSelectedItems();
+            if (restoredSelection.size() == 1) {
+                selectedSession = restoredSelection.getFirst();
+            } else if (restoredSelection.size() > 1) {
+                selectedSession = restoredSelection.getFirst();
+            } else {
+                selectedSession = null;
+            }
+            updateActionButtons(restoredSelection.size());
+        } finally {
+            refreshing = false;
         }
+
+        // Detail pane is NOT rebuilt here — it keeps whatever the user is looking at.
+        // It only rebuilds on explicit user click (selection change with refreshing=false).
     }
 
     private boolean isRemoteSelected() {
