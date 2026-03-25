@@ -49,7 +49,8 @@ public class SettingsWindow {
     private ToggleGroup locationToggle;
     private ListView<String> directoryList;
     private TableView<SessionSnapshot> sessionTable;
-    private TextArea detailLabel;
+    private VBox detailPane;
+    private GridPane detailGrid;
     private HBox actionBar;
     private Button resumeBtn, renameBtn, deleteBtn;
     private SessionSnapshot selectedSession;
@@ -179,17 +180,24 @@ public class SettingsWindow {
                         showMultiDetail(selected);
                     } else {
                         selectedSession = null;
-                        detailLabel.setText("Select a session to view details.");
+                        clearDetailPane();
                     }
                     updateActionButtons(selected.size());
                 });
 
         // --- Right bottom: detail + actions ---
-        detailLabel = new TextArea("Select a session to view details.");
-        detailLabel.setEditable(false);
-        detailLabel.setWrapText(true);
-        detailLabel.setPadding(new Insets(10));
-        detailLabel.setStyle("-fx-font-family: monospace; -fx-font-size: 12px; -fx-control-inner-background: transparent;");
+        detailGrid = new GridPane();
+        detailGrid.setHgap(8);
+        detailGrid.setVgap(4);
+        detailGrid.setPadding(new Insets(10));
+        detailGrid.getColumnConstraints().addAll(
+                new ColumnConstraints(90),
+                new ColumnConstraints(Region.USE_COMPUTED_SIZE, Region.USE_COMPUTED_SIZE, Double.MAX_VALUE, Priority.ALWAYS, null, true),
+                new ColumnConstraints(28));
+        var placeholderLabel = new Label("Select a session to view details.");
+        placeholderLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #888;");
+        detailPane = new VBox(placeholderLabel);
+        detailPane.setPadding(new Insets(10));
 
         resumeBtn = new Button("Resume in Terminal");
         resumeBtn.setDisable(true);
@@ -256,9 +264,11 @@ public class SettingsWindow {
 
         var actionPane = new VBox(4, actionBar, deleteProgress);
 
-        detailLabel.setPrefHeight(200);
+        var detailScroll = new ScrollPane(detailPane);
+        detailScroll.setFitToWidth(true);
+        detailScroll.setPrefHeight(200);
 
-        var rightPane = new VBox(sessionTable, new Separator(), detailLabel, actionPane);
+        var rightPane = new VBox(sessionTable, new Separator(), detailScroll, actionPane);
         VBox.setVgrow(sessionTable, Priority.ALWAYS);
 
         var split = new SplitPane(leftBox, rightPane);
@@ -409,42 +419,42 @@ public class SettingsWindow {
     }
 
     private void showSessionDetail(SessionSnapshot session) {
-        var sb = new StringBuilder();
-        sb.append("ID:          ").append(session.id()).append("\n");
-        sb.append("Name:        ").append(session.name()).append("\n");
-        sb.append("Model:       ").append(session.model()).append("\n");
-        sb.append("Status:      ").append(session.status()).append("\n");
-        sb.append("Location:    ").append(session.remote() ? "Remote" : "Local").append("\n");
-        sb.append("Directory:   ").append(session.workingDirectory()).append("\n");
+        detailGrid.getChildren().clear();
+        int row = 0;
+        row = addDetailRow(row, "ID", session.id());
+        row = addDetailRow(row, "Name", session.name());
+        row = addDetailRow(row, "Model", session.model());
+        row = addDetailRow(row, "Status", session.status().name());
+        row = addDetailRow(row, "Location", session.remote() ? "Remote" : "Local");
+        row = addDetailRow(row, "Directory", session.workingDirectory());
         if (session.createdAt() != null)
-            sb.append("Created:     ").append(DATE_FMT.format(session.createdAt())).append("\n");
+            row = addDetailRow(row, "Created", DATE_FMT.format(session.createdAt()));
         if (session.lastActivityAt() != null)
-            sb.append("Last Active: ").append(DATE_FMT.format(session.lastActivityAt())).append("\n");
-        sb.append("\n");
+            row = addDetailRow(row, "Last Active", DATE_FMT.format(session.lastActivityAt()));
 
-        sb.append("— Usage —\n");
-        sb.append("Tokens:   ").append(session.usage().currentTokens())
-                .append(" / ").append(session.usage().tokenLimit())
-                .append("  (").append((int) session.usage().tokenUsagePercent()).append("%)\n");
-        sb.append("Messages: ").append(session.usage().messagesCount()).append("\n");
+        // Usage section
+        row = addSectionHeader(row, "Usage");
+        row = addDetailRow(row, "Tokens", session.usage().currentTokens()
+                + " / " + session.usage().tokenLimit()
+                + "  (" + (int) session.usage().tokenUsagePercent() + "%)");
+        row = addDetailRow(row, "Messages", String.valueOf(session.usage().messagesCount()));
 
         if (!session.subagents().isEmpty()) {
-            sb.append("\n— Subagents —\n");
+            row = addSectionHeader(row, "Subagents");
             for (var sub : session.subagents()) {
-                sb.append("  ").append(sub.id())
-                        .append(" [").append(sub.status()).append("] ")
-                        .append(sub.description()).append("\n");
+                row = addDetailRow(row, sub.id(), "[" + sub.status() + "] " + sub.description());
             }
         }
         if (session.pendingPermission()) {
-            sb.append("\n⚠ Permission request pending\n");
+            row = addSectionHeader(row, "");
+            addDetailRow(row, "⚠", "Permission request pending");
         }
-        detailLabel.setText(sb.toString());
+        detailPane.getChildren().setAll(detailGrid);
     }
 
     private void showMultiDetail(javafx.collections.ObservableList<SessionSnapshot> selected) {
-        var sb = new StringBuilder();
-        sb.append(selected.size()).append(" sessions selected\n\n");
+        detailGrid.getChildren().clear();
+        int row = 0;
         int totalTokens = 0, totalMsgs = 0;
         var models = new LinkedHashSet<String>();
         var statuses = new LinkedHashMap<SessionStatus, Integer>();
@@ -454,14 +464,52 @@ public class SettingsWindow {
             models.add(s.model());
             statuses.merge(s.status(), 1, Integer::sum);
         }
-        sb.append("— Aggregate —\n");
-        sb.append("Total Tokens:   ").append(totalTokens).append("\n");
-        sb.append("Total Messages: ").append(totalMsgs).append("\n");
-        sb.append("Models:         ").append(String.join(", ", models)).append("\n");
-        sb.append("Statuses:       ");
-        statuses.forEach((st, cnt) -> sb.append(st).append("(").append(cnt).append(") "));
-        sb.append("\n");
-        detailLabel.setText(sb.toString());
+        row = addSectionHeader(row, selected.size() + " sessions selected");
+        row = addDetailRow(row, "Total Tokens", String.valueOf(totalTokens));
+        row = addDetailRow(row, "Total Msgs", String.valueOf(totalMsgs));
+        row = addDetailRow(row, "Models", String.join(", ", models));
+        var statusStr = new StringBuilder();
+        statuses.forEach((st, cnt) -> statusStr.append(st).append("(").append(cnt).append(") "));
+        addDetailRow(row, "Statuses", statusStr.toString().trim());
+        detailPane.getChildren().setAll(detailGrid);
+    }
+
+    private void clearDetailPane() {
+        var placeholder = new Label("Select a session to view details.");
+        placeholder.setStyle("-fx-font-size: 12px; -fx-text-fill: #888;");
+        detailPane.getChildren().setAll(placeholder);
+    }
+
+    private int addDetailRow(int row, String label, String value) {
+        var keyLabel = new Label(label);
+        keyLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #aaa;");
+
+        var valueField = new TextField(value != null ? value : "");
+        valueField.setEditable(false);
+        valueField.setStyle("-fx-font-family: monospace; -fx-font-size: 12px; "
+                + "-fx-background-color: transparent; -fx-border-color: transparent; -fx-padding: 0;");
+
+        var copyBtn = new Button("📋");
+        copyBtn.setStyle("-fx-font-size: 10px; -fx-padding: 1 4; -fx-background-color: transparent; -fx-cursor: hand;");
+        copyBtn.setTooltip(new Tooltip("Copy to clipboard"));
+        copyBtn.setOnAction(e -> {
+            var cb = javafx.scene.input.Clipboard.getSystemClipboard();
+            var content = new javafx.scene.input.ClipboardContent();
+            content.putString(value != null ? value : "");
+            cb.setContent(content);
+        });
+
+        detailGrid.add(keyLabel, 0, row);
+        detailGrid.add(valueField, 1, row);
+        detailGrid.add(copyBtn, 2, row);
+        return row + 1;
+    }
+
+    private int addSectionHeader(int row, String title) {
+        var header = new Label(title);
+        header.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #ccc; -fx-padding: 6 0 2 0;");
+        detailGrid.add(header, 0, row, 3, 1);
+        return row + 1;
     }
 
     /** Strip badge suffix like "  [3] ●" from directory label to get the path. */
