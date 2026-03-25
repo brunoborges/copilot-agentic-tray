@@ -130,6 +130,51 @@ public class SdkBridge {
         return connected;
     }
 
+    /**
+     * Get the current SDK connection state.
+     */
+    public ConnectionState getConnectionState() {
+        if (client == null) return ConnectionState.DISCONNECTED;
+        return client.getState();
+    }
+
+    /**
+     * Fetch CLI status (version, protocol). Returns null fields on failure.
+     */
+    public record CliStatus(
+            String version,
+            String protocolVersion,
+            ConnectionState connectionState,
+            Boolean authenticated,
+            String authType,
+            String login
+    ) {}
+
+    /**
+     * Gather all available CLI status information.
+     */
+    public CompletableFuture<CliStatus> fetchCliStatus() {
+        var state = getConnectionState();
+        if (client == null || state != ConnectionState.CONNECTED) {
+            return CompletableFuture.completedFuture(
+                    new CliStatus(null, null, state, null, null, null));
+        }
+
+        var statusFuture = client.getStatus()
+                .exceptionally(ex -> { LOG.debug("getStatus failed", ex); return null; });
+        var authFuture = client.getAuthStatus()
+                .exceptionally(ex -> { LOG.debug("getAuthStatus failed", ex); return null; });
+
+        return statusFuture.thenCombine(authFuture, (status, auth) -> {
+            String version = status != null ? status.getVersion() : null;
+            String protocol = status != null ? String.valueOf(status.getProtocolVersion()) : null;
+            Boolean authed = auth != null ? auth.isAuthenticated() : null;
+            String aType = auth != null ? auth.getAuthType() : null;
+            String aLogin = auth != null ? auth.getLogin() : null;
+            return new CliStatus(version, protocol, state, authed, aType, aLogin);
+        });
+    }
+
     public void disconnect() {
         scheduler.shutdownNow();
         attachedSessions.values().forEach(s -> {

@@ -1,5 +1,6 @@
 package com.github.copilot.tray.tray;
 
+import com.github.copilot.sdk.ConnectionState;
 import com.github.copilot.tray.sdk.SdkBridge;
 import com.github.copilot.tray.sdk.TerminalLauncher;
 import com.github.copilot.tray.session.SessionDiskReader;
@@ -30,6 +31,7 @@ public class TrayManager {
     private final Runnable onOpenSettings;
     private final Runnable onShowSessions;
     private TrayIcon trayIcon;
+    private volatile String cliStatusLabel = "Copilot CLI is Disconnected";
 
     public TrayManager(SessionManager sessionManager, SdkBridge sdkBridge,
                        TerminalLauncher terminalLauncher, Runnable onOpenSettings,
@@ -69,6 +71,7 @@ public class TrayManager {
 
     public void refresh(Collection<SessionSnapshot> sessions) {
         if (trayIcon == null) return;
+        refreshCliStatus();
         var state = computeIconState(sessions);
         trayIcon.setImage(loadIcon(state));
         trayIcon.setToolTip(state.getTooltip());
@@ -82,7 +85,11 @@ public class TrayManager {
     private PopupMenu buildMenu(Collection<SessionSnapshot> sessions) {
         var menu = new PopupMenu("GitHub Copilot Agentic Tray");
 
-        // Dashboard (first item)
+        // CLI status (first item)
+        menu.add(disabledItem(buildCliStatusLabel()));
+        menu.addSeparator();
+
+        // Dashboard
         menu.add(actionItem("Dashboard", e -> onOpenSettings.run()));
         menu.addSeparator();
 
@@ -213,6 +220,37 @@ public class TrayManager {
                         })));
 
         return sessionMenu;
+    }
+
+    // =====================================================================
+    // CLI status
+    // =====================================================================
+
+    /**
+     * Update CLI status label asynchronously from SDK bridge.
+     * Called periodically or on refresh.
+     */
+    public void refreshCliStatus() {
+        sdkBridge.fetchCliStatus().thenAccept(status -> {
+            var sb = new StringBuilder("Copilot CLI");
+            if (status.version() != null) sb.append(" ").append(status.version());
+            var stateStr = switch (status.connectionState()) {
+                case CONNECTED -> "Connected";
+                case CONNECTING -> "Connecting…";
+                case DISCONNECTED -> "Disconnected";
+                case ERROR -> "Error";
+            };
+            sb.append(" is ").append(stateStr);
+            cliStatusLabel = sb.toString();
+        }).exceptionally(ex -> {
+            LOG.debug("Failed to fetch CLI status", ex);
+            cliStatusLabel = "Copilot CLI is Disconnected";
+            return null;
+        });
+    }
+
+    private String buildCliStatusLabel() {
+        return cliStatusLabel;
     }
 
     // =====================================================================

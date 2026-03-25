@@ -1,6 +1,8 @@
 package com.github.copilot.tray.ui;
 
+import com.github.copilot.sdk.ConnectionState;
 import com.github.copilot.tray.config.ConfigStore;
+import com.github.copilot.tray.sdk.SdkBridge;
 import com.github.copilot.tray.session.SessionDiskReader;
 import com.github.copilot.tray.session.SessionManager;
 import com.github.copilot.tray.session.SessionSnapshot;
@@ -33,6 +35,7 @@ public class SettingsWindow {
 
     private final SessionManager sessionManager;
     private final ConfigStore configStore;
+    private final SdkBridge sdkBridge;
     private final Consumer<String> deleteHandler;
     private final Consumer<String> resumeHandler;
     private Stage stage;
@@ -59,9 +62,11 @@ public class SettingsWindow {
     private CheckBox autoStartCheckBox;
 
     public SettingsWindow(SessionManager sessionManager, ConfigStore configStore,
+                          SdkBridge sdkBridge,
                           Consumer<String> deleteHandler, Consumer<String> resumeHandler) {
         this.sessionManager = sessionManager;
         this.configStore = configStore;
+        this.sdkBridge = sdkBridge;
         this.deleteHandler = deleteHandler;
         this.resumeHandler = resumeHandler;
     }
@@ -551,21 +556,91 @@ public class SettingsWindow {
     private Tab createAboutTab() {
         var content = new VBox(10);
         content.setPadding(new Insets(15));
+
+        // App info
         content.getChildren().addAll(
+                createSectionHeader("Application"),
                 new Label("GitHub Copilot Agentic Tray"),
                 new Label("Version: 1.0.0-SNAPSHOT"),
                 new Label("License: MIT"),
-                new Separator(),
                 new Label("A cross-platform system tray application to track and manage"),
                 new Label("GitHub Copilot CLI sessions and remote coding agents."),
-                new Separator(),
-                new Label("SDK: copilot-sdk-java"),
-                new Label("JDK: " + System.getProperty("java.version")),
-                new Label("OS: " + System.getProperty("os.name") + " " + System.getProperty("os.arch")),
-                new Separator(),
-                createHyperlink("GitHub", "https://github.com/brunoborges/copilot-agentic-tray")
+                new Separator()
         );
-        return new Tab("About", content);
+
+        // Runtime info
+        content.getChildren().addAll(
+                createSectionHeader("Runtime"),
+                new Label("JDK: " + System.getProperty("java.version")
+                        + " (" + System.getProperty("java.vendor", "") + ")"),
+                new Label("JavaFX: " + System.getProperty("javafx.version", "unknown")),
+                new Label("OS: " + System.getProperty("os.name") + " "
+                        + System.getProperty("os.version") + " (" + System.getProperty("os.arch") + ")"),
+                new Separator()
+        );
+
+        // CLI status section — populated asynchronously
+        var cliStatusHeader = createSectionHeader("Copilot CLI");
+        var cliConnectionLabel = new Label("Connection: checking…");
+        var cliVersionLabel = new Label("Version: checking…");
+        var cliProtocolLabel = new Label("Protocol: checking…");
+        var cliAuthLabel = new Label("Authenticated: checking…");
+        var cliAuthTypeLabel = new Label("Auth Type: —");
+        var cliLoginLabel = new Label("Login: —");
+        var refreshBtn = new Button("Refresh Status");
+
+        content.getChildren().addAll(
+                cliStatusHeader,
+                cliConnectionLabel,
+                cliVersionLabel,
+                cliProtocolLabel,
+                cliAuthLabel,
+                cliAuthTypeLabel,
+                cliLoginLabel,
+                refreshBtn,
+                new Separator()
+        );
+
+        // Fetch CLI status
+        Runnable fetchStatus = () -> sdkBridge.fetchCliStatus().thenAccept(status -> Platform.runLater(() -> {
+            var stateStr = switch (status.connectionState()) {
+                case CONNECTED -> "Connected ✅";
+                case CONNECTING -> "Connecting… ⏳";
+                case DISCONNECTED -> "Disconnected ❌";
+                case ERROR -> "Error ⚠️";
+            };
+            cliConnectionLabel.setText("Connection: " + stateStr);
+            cliVersionLabel.setText("Version: " + (status.version() != null ? status.version() : "—"));
+            cliProtocolLabel.setText("Protocol: " + (status.protocolVersion() != null ? status.protocolVersion() : "—"));
+            cliAuthLabel.setText("Authenticated: " + (status.authenticated() != null
+                    ? (status.authenticated() ? "Yes ✅" : "No ❌") : "—"));
+            cliAuthTypeLabel.setText("Auth Type: " + (status.authType() != null ? status.authType() : "—"));
+            cliLoginLabel.setText("Login: " + (status.login() != null ? status.login() : "—"));
+        })).exceptionally(ex -> {
+            Platform.runLater(() -> cliConnectionLabel.setText("Connection: Unable to reach CLI ❌"));
+            return null;
+        });
+
+        fetchStatus.run();
+        refreshBtn.setOnAction(e -> fetchStatus.run());
+
+        // Links
+        content.getChildren().addAll(
+                createSectionHeader("Links"),
+                createHyperlink("GitHub", "https://github.com/brunoborges/copilot-agentic-tray"),
+                createHyperlink("Copilot SDK for Java", "https://github.com/github/copilot-sdk-java"),
+                createHyperlink("Copilot CLI Docs", "https://docs.github.com/copilot/concepts/agents/about-copilot-cli")
+        );
+
+        var scrollPane = new ScrollPane(content);
+        scrollPane.setFitToWidth(true);
+        return new Tab("About", scrollPane);
+    }
+
+    private Label createSectionHeader(String text) {
+        var label = new Label(text);
+        label.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+        return label;
     }
 
     private Hyperlink createHyperlink(String text, String url) {

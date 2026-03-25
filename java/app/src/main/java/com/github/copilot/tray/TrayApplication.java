@@ -37,7 +37,7 @@ public class TrayApplication {
         this.eventRouter = new EventRouter(sessionManager);
         this.terminalLauncher = new TerminalLauncher();
         this.notifier = new Notifier();
-        this.settingsWindow = new SettingsWindow(sessionManager, configStore,
+        this.settingsWindow = new SettingsWindow(sessionManager, configStore, sdkBridge,
                 sessionId -> {
                     sdkBridge.deleteSession(sessionId)
                             .thenRun(() -> {
