@@ -112,7 +112,7 @@ public class UsageTilesPane extends ScrollPane {
         aggregateRow.setPadding(new Insets(4, 0, 4, 0));
 
         var tilesPane = new VBox(6,
-                sectionLabel("Selected Session"), detailRow,
+                sectionLabel("Selected Session(s)"), detailRow,
                 sectionLabel("Context Breakdown"), breakdownRow);
 
         setContent(tilesPane);
