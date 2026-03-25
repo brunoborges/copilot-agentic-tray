@@ -32,6 +32,7 @@ public class TrayManager {
     private final Runnable onShowSessions;
     private TrayIcon trayIcon;
     private volatile String cliStatusLabel = "🔴 Copilot CLI is Disconnected";
+    private volatile boolean cliConnected = false;
 
     public TrayManager(SessionManager sessionManager, SdkBridge sdkBridge,
                        TerminalLauncher terminalLauncher, Runnable onOpenSettings,
@@ -69,13 +70,20 @@ public class TrayManager {
 
     public TrayIcon getTrayIcon() { return trayIcon; }
 
+    private volatile Collection<SessionSnapshot> lastSessions = List.of();
+
     public void refresh(Collection<SessionSnapshot> sessions) {
         if (trayIcon == null) return;
+        lastSessions = sessions;
         refreshCliStatus();
+        applyIconState(sessions);
+        trayIcon.setPopupMenu(buildMenu(sessions));
+    }
+
+    private void applyIconState(Collection<SessionSnapshot> sessions) {
         var state = computeIconState(sessions);
         trayIcon.setImage(loadIcon(state));
         trayIcon.setToolTip(state.getTooltip());
-        trayIcon.setPopupMenu(buildMenu(sessions));
     }
 
     // =====================================================================
@@ -237,18 +245,21 @@ public class TrayManager {
         sdkBridge.fetchCliStatus().thenAccept(status -> {
             var sb = new StringBuilder();
             var stateStr = switch (status.connectionState()) {
-                case CONNECTED -> { sb.append("🟢 "); yield "Connected"; }
-                case CONNECTING -> { sb.append("🟡 "); yield "Connecting…"; }
-                case DISCONNECTED -> { sb.append("🔴 "); yield "Disconnected"; }
-                case ERROR -> { sb.append("🔴 "); yield "Error"; }
+                case CONNECTED -> { cliConnected = true; sb.append("🟢 "); yield "Connected"; }
+                case CONNECTING -> { cliConnected = false; sb.append("🟡 "); yield "Connecting…"; }
+                case DISCONNECTED -> { cliConnected = false; sb.append("🔴 "); yield "Disconnected"; }
+                case ERROR -> { cliConnected = false; sb.append("🔴 "); yield "Error"; }
             };
             sb.append("Copilot CLI");
             if (status.version() != null) sb.append(" ").append(status.version());
             sb.append(" is ").append(stateStr);
             cliStatusLabel = sb.toString();
+            if (trayIcon != null) applyIconState(lastSessions);
         }).exceptionally(ex -> {
             LOG.debug("Failed to fetch CLI status", ex);
+            cliConnected = false;
             cliStatusLabel = "🔴 Copilot CLI is Disconnected";
+            if (trayIcon != null) applyIconState(lastSessions);
             return null;
         });
     }
@@ -274,10 +285,14 @@ public class TrayManager {
     }
 
     private TrayIconState computeIconState(Collection<SessionSnapshot> sessions) {
+        // If CLI is not connected, always show warning (red dot)
+        if (!cliConnected) return TrayIconState.WARNING;
+
         boolean hasError = sessions.stream().anyMatch(s -> s.status() == SessionStatus.ERROR);
         boolean hasWarning = sessions.stream().anyMatch(s -> s.usage().tokenUsagePercent() >= 80);
         boolean hasBusy = sessions.stream().anyMatch(s -> s.status() == SessionStatus.BUSY);
-        boolean hasActive = sessions.stream().anyMatch(s -> s.status() != SessionStatus.ARCHIVED);
+        boolean hasActive = sessions.stream().anyMatch(s ->
+                s.status() != SessionStatus.ARCHIVED && s.status() != SessionStatus.CORRUPTED);
         if (hasError || hasWarning) return TrayIconState.WARNING;
         if (hasBusy) return TrayIconState.BUSY;
         if (hasActive) return TrayIconState.ACTIVE;
