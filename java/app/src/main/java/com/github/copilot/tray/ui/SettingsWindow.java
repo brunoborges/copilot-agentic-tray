@@ -34,6 +34,16 @@ public class SettingsWindow {
     // Track currently selected session for actions
     private SessionSnapshot selectedSession;
 
+    // Track tree expansion state across refreshes
+    private final java.util.Set<String> expandedTreeNodes = new java.util.HashSet<>();
+    // Initialize with default expansion state
+    {
+        expandedTreeNodes.add("Sessions");
+        expandedTreeNodes.add("Local Sessions");
+        expandedTreeNodes.add("Remote Sessions");
+        expandedTreeNodes.add("Active");
+    }
+
     // Usage dashboard
     private UsageDashboard usageDashboard;
 
@@ -249,6 +259,12 @@ public class SettingsWindow {
     private void refreshSessionTree(Collection<SessionSnapshot> sessions) {
         if (sessionTree == null) return;
 
+        // Save current selection (by session ID)
+        String selectedId = selectedSession != null ? selectedSession.id() : null;
+
+        // Save expansion state from current tree
+        saveTreeExpansionState(sessionTree.getRoot());
+
         var root = new TreeItem<String>("Sessions");
 
         var local = sessions.stream().filter(s -> !s.remote()).toList();
@@ -259,6 +275,64 @@ public class SettingsWindow {
 
         root.setExpanded(true);
         sessionTree.setRoot(root);
+
+        // Restore expansion state
+        restoreTreeExpansionState(root);
+
+        // Restore selection
+        if (selectedId != null) {
+            selectTreeItemBySessionId(root, selectedId);
+        }
+    }
+
+    /** Walk the tree and record which nodes are expanded (by prefix of their label). */
+    private void saveTreeExpansionState(TreeItem<String> node) {
+        if (node == null) return;
+        var key = treeNodeKey(node);
+        if (key != null) {
+            if (node.isExpanded()) expandedTreeNodes.add(key);
+            else expandedTreeNodes.remove(key);
+        }
+        for (var child : node.getChildren()) {
+            saveTreeExpansionState(child);
+        }
+    }
+
+    /** Restore expansion state from the saved set. */
+    private void restoreTreeExpansionState(TreeItem<String> node) {
+        if (node == null) return;
+        var key = treeNodeKey(node);
+        if (key != null && !node.isLeaf()) {
+            node.setExpanded(expandedTreeNodes.contains(key));
+        }
+        for (var child : node.getChildren()) {
+            restoreTreeExpansionState(child);
+        }
+    }
+
+    /** Stable key for a tree node — use the structural prefix (e.g. "Active", "Local Sessions"). */
+    private static String treeNodeKey(TreeItem<String> node) {
+        if (node == null || node.getValue() == null) return null;
+        // Group nodes have labels like "Local Sessions (5)" — strip count
+        var label = node.getValue();
+        int paren = label.indexOf(" (");
+        return paren > 0 ? label.substring(0, paren) : label;
+    }
+
+    /** Find and select a tree leaf by matching session label to a session ID. */
+    private void selectTreeItemBySessionId(TreeItem<String> node, String sessionId) {
+        if (node.isLeaf() && node.getValue() != null) {
+            var match = sessionManager.getSessions().stream()
+                    .filter(s -> s.id().equals(sessionId) && buildTreeLabel(s).equals(node.getValue()))
+                    .findFirst();
+            if (match.isPresent()) {
+                sessionTree.getSelectionModel().select(node);
+                return;
+            }
+        }
+        for (var child : node.getChildren()) {
+            selectTreeItemBySessionId(child, sessionId);
+        }
     }
 
     private TreeItem<String> buildGroupNode(String label, java.util.List<SessionSnapshot> sessions) {
@@ -268,17 +342,15 @@ public class SettingsWindow {
                 .filter(s -> s.status() == SessionStatus.ARCHIVED).toList();
 
         var group = new TreeItem<>(label + " (" + sessions.size() + ")");
-        group.setExpanded(true);
+        // Expansion state is restored by restoreTreeExpansionState()
 
         var activeNode = new TreeItem<>("Active (" + active.size() + ")");
-        activeNode.setExpanded(true);
         for (var s : active) {
             activeNode.getChildren().add(new TreeItem<>(buildTreeLabel(s)));
         }
         group.getChildren().add(activeNode);
 
         var archivedNode = new TreeItem<>("Archived (" + archived.size() + ")");
-        archivedNode.setExpanded(false); // collapsed by default
         for (var s : archived) {
             archivedNode.getChildren().add(new TreeItem<>(buildTreeLabel(s)));
         }

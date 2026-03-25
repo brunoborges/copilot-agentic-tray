@@ -240,19 +240,33 @@ public class UsageDashboard extends VBox {
             var list = List.copyOf(sessions);
             var previousId = selectedSession != null ? selectedSession.id() : null;
 
+            // Save scroll position
+            int scrollIndex = sessionTable.getSelectionModel().getSelectedIndex();
+
             sessionTable.setItems(FXCollections.observableArrayList(list));
             updateAggregateTiles(list);
 
-            // Restore selection
+            // Restore selection by session ID
+            boolean restored = false;
             if (previousId != null) {
-                list.stream()
-                        .filter(s -> s.id().equals(previousId))
-                        .findFirst()
-                        .ifPresent(s -> sessionTable.getSelectionModel().select(s));
+                for (int i = 0; i < list.size(); i++) {
+                    if (list.get(i).id().equals(previousId)) {
+                        sessionTable.getSelectionModel().select(i);
+                        sessionTable.scrollTo(i);
+                        restored = true;
+                        break;
+                    }
+                }
             }
-            // Auto-select first if nothing selected
-            if (sessionTable.getSelectionModel().getSelectedItem() == null && !list.isEmpty()) {
-                sessionTable.getSelectionModel().selectFirst();
+            // If previous session is gone, try same index position
+            if (!restored && !list.isEmpty()) {
+                int idx = Math.min(scrollIndex, list.size() - 1);
+                if (idx >= 0) {
+                    sessionTable.getSelectionModel().select(idx);
+                    sessionTable.scrollTo(idx);
+                } else {
+                    sessionTable.getSelectionModel().selectFirst();
+                }
             }
         });
     }
