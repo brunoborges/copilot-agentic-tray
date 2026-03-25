@@ -5,6 +5,7 @@ import com.github.copilot.tray.notify.Notifier;
 import com.github.copilot.tray.sdk.EventRouter;
 import com.github.copilot.tray.sdk.SdkBridge;
 import com.github.copilot.tray.sdk.TerminalLauncher;
+import com.github.copilot.tray.session.SessionDiskReader;
 import com.github.copilot.tray.session.SessionManager;
 import com.github.copilot.tray.session.SessionSnapshot;
 import com.github.copilot.tray.tray.TrayManager;
@@ -37,8 +38,13 @@ public class TrayApplication {
         this.terminalLauncher = new TerminalLauncher();
         this.notifier = new Notifier();
         this.settingsWindow = new SettingsWindow(sessionManager, configStore,
-                sessionId -> sdkBridge.deleteSession(sessionId)
-                        .thenRun(() -> sessionManager.removeSession(sessionId)),
+                sessionId -> {
+                    sdkBridge.deleteSession(sessionId)
+                            .thenRun(() -> {
+                                SessionDiskReader.deleteFromDisk(sessionId);
+                                sessionManager.removeSession(sessionId);
+                            });
+                },
                 sessionId -> terminalLauncher.resumeSession(sessionId));
         this.trayManager = new TrayManager(sessionManager, sdkBridge,
                 terminalLauncher, settingsWindow::show, settingsWindow::showSessionsTab);

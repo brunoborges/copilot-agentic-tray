@@ -2,6 +2,7 @@ package com.github.copilot.tray.tray;
 
 import com.github.copilot.tray.sdk.SdkBridge;
 import com.github.copilot.tray.sdk.TerminalLauncher;
+import com.github.copilot.tray.session.SessionDiskReader;
 import com.github.copilot.tray.session.SessionManager;
 import com.github.copilot.tray.session.SessionSnapshot;
 import com.github.copilot.tray.session.SessionStatus;
@@ -183,7 +184,10 @@ public class TrayManager {
                         terminalLauncher.resumeSession(session.id())));
                 item.add(actionItem("Delete", e ->
                         sdkBridge.deleteSession(session.id())
-                                .thenRun(() -> sessionManager.removeSession(session.id()))));
+                                .thenRun(() -> {
+                                    SessionDiskReader.deleteFromDisk(session.id());
+                                    sessionManager.removeSession(session.id());
+                                })));
                 archivedMenu.add(item);
             }
             if (archived.size() > TRAY_GROUP_LIMIT) {
@@ -203,7 +207,10 @@ public class TrayManager {
                 item.add(disabledItem("⚠ Corrupted / incompatible"));
                 item.add(actionItem("Delete", e ->
                         sdkBridge.deleteSession(session.id())
-                                .thenRun(() -> sessionManager.removeSession(session.id()))));
+                                .thenRun(() -> {
+                                    SessionDiskReader.deleteFromDisk(session.id());
+                                    sessionManager.removeSession(session.id());
+                                })));
                 corruptedMenu.add(item);
             }
             if (corrupted.size() > TRAY_GROUP_LIMIT) {
@@ -248,7 +255,10 @@ public class TrayManager {
 
         sessionMenu.add(actionItem("Delete", e ->
                 sdkBridge.deleteSession(session.id())
-                        .thenRun(() -> sessionManager.removeSession(session.id()))));
+                        .thenRun(() -> {
+                            SessionDiskReader.deleteFromDisk(session.id());
+                            sessionManager.removeSession(session.id());
+                        })));
 
         return sessionMenu;
     }

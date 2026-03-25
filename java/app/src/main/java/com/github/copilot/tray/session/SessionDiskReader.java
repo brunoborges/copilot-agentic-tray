@@ -131,4 +131,34 @@ public final class SessionDiskReader {
         var content = jsonLine.substring(start + 1, Math.min(end, start + 81));
         return content.length() > 80 ? content.substring(0, 77) + "..." : content;
     }
+
+    /**
+     * Delete a session's directory from disk.
+     * @return true if successfully deleted, false if not found or error
+     */
+    public static boolean deleteFromDisk(String sessionId) {
+        var sessionDir = SESSION_STORE.resolve(sessionId);
+        if (!Files.isDirectory(sessionDir)) {
+            LOG.debug("Session directory not found for deletion: {}", sessionId);
+            return false;
+        }
+        try {
+            deleteDirectoryRecursively(sessionDir);
+            LOG.info("Deleted session from disk: {}", sessionId);
+            return true;
+        } catch (IOException e) {
+            LOG.error("Failed to delete session {} from disk", sessionId, e);
+            return false;
+        }
+    }
+
+    private static void deleteDirectoryRecursively(Path dir) throws IOException {
+        try (var walk = Files.walk(dir)) {
+            walk.sorted(java.util.Comparator.reverseOrder())
+                    .forEach(path -> {
+                        try { Files.delete(path); }
+                        catch (IOException e) { LOG.debug("Failed to delete {}", path); }
+                    });
+        }
+    }
 }
