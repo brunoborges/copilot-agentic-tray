@@ -154,15 +154,22 @@ public class SettingsWindow {
         // --- Right top: session table ---
         sessionTable = new TableView<>();
         sessionTable.setPlaceholder(new Label("Select a directory."));
+        sessionTable.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         buildSessionTableColumns();
         sessionTable.getSelectionModel().selectedItemProperty()
                 .addListener((obs, old, nv) -> {
                     if (refreshing) return;
-                    selectedSession = nv;
-                    if (nv != null) {
-                        showSessionDetail(nv);
+                    var selected = sessionTable.getSelectionModel().getSelectedItems();
+                    if (selected.size() == 1) {
+                        selectedSession = selected.getFirst();
+                        showSessionDetail(selectedSession);
+                        actionBar.setDisable(false);
+                    } else if (selected.size() > 1) {
+                        selectedSession = selected.getFirst();
+                        showMultiDetail(selected);
                         actionBar.setDisable(false);
                     } else {
+                        selectedSession = null;
                         detailLabel.setText("Select a session to view details.");
                         actionBar.setDisable(true);
                     }
@@ -181,14 +188,17 @@ public class SettingsWindow {
         var deleteBtn = new Button("Delete");
         deleteBtn.setStyle("-fx-text-fill: red;");
         deleteBtn.setOnAction(e -> {
-            if (selectedSession != null) {
-                new Alert(Alert.AlertType.CONFIRMATION,
-                        "Delete session '" + selectedSession.name() + "'?",
-                        ButtonType.YES, ButtonType.NO)
-                        .showAndWait().ifPresent(bt -> {
-                            if (bt == ButtonType.YES) deleteHandler.accept(selectedSession.id());
-                        });
-            }
+            var selected = List.copyOf(sessionTable.getSelectionModel().getSelectedItems());
+            if (selected.isEmpty()) return;
+            var msg = selected.size() == 1
+                    ? "Delete session '" + selected.getFirst().name() + "'?"
+                    : "Delete " + selected.size() + " selected sessions?";
+            new Alert(Alert.AlertType.CONFIRMATION, msg, ButtonType.YES, ButtonType.NO)
+                    .showAndWait().ifPresent(bt -> {
+                        if (bt == ButtonType.YES) {
+                            for (var s : selected) deleteHandler.accept(s.id());
+                        }
+                    });
         });
         actionBar = new HBox(8, resumeBtn, cancelBtn, deleteBtn);
         actionBar.setPadding(new Insets(6));
@@ -369,6 +379,28 @@ public class SettingsWindow {
         if (session.pendingPermission()) {
             sb.append("\n⚠ Permission request pending\n");
         }
+        detailLabel.setText(sb.toString());
+    }
+
+    private void showMultiDetail(javafx.collections.ObservableList<SessionSnapshot> selected) {
+        var sb = new StringBuilder();
+        sb.append(selected.size()).append(" sessions selected\n\n");
+        int totalTokens = 0, totalMsgs = 0;
+        var models = new LinkedHashSet<String>();
+        var statuses = new LinkedHashMap<SessionStatus, Integer>();
+        for (var s : selected) {
+            totalTokens += s.usage().currentTokens();
+            totalMsgs += s.usage().messagesCount();
+            models.add(s.model());
+            statuses.merge(s.status(), 1, Integer::sum);
+        }
+        sb.append("— Aggregate —\n");
+        sb.append("Total Tokens:   ").append(totalTokens).append("\n");
+        sb.append("Total Messages: ").append(totalMsgs).append("\n");
+        sb.append("Models:         ").append(String.join(", ", models)).append("\n");
+        sb.append("Statuses:       ");
+        statuses.forEach((st, cnt) -> sb.append(st).append("(").append(cnt).append(") "));
+        sb.append("\n");
         detailLabel.setText(sb.toString());
     }
 
