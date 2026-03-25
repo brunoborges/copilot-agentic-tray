@@ -329,10 +329,15 @@ public class SettingsWindow {
                 new SimpleStringProperty(String.format("%.0f%%", cd.getValue().usage().tokenUsagePercent())));
         pctCol.setPrefWidth(60);
 
-        var msgsCol = new TableColumn<SessionSnapshot, String>("Msgs");
-        msgsCol.setCellValueFactory(cd ->
-                new SimpleStringProperty(String.valueOf(cd.getValue().usage().messagesCount())));
-        msgsCol.setPrefWidth(50);
+        var userMsgsCol = new TableColumn<SessionSnapshot, String>("User");
+        userMsgsCol.setCellValueFactory(cd ->
+                new SimpleStringProperty(String.valueOf(cd.getValue().usage().userMessagesCount())));
+        userMsgsCol.setPrefWidth(45);
+
+        var asstMsgsCol = new TableColumn<SessionSnapshot, String>("Asst");
+        asstMsgsCol.setCellValueFactory(cd ->
+                new SimpleStringProperty(String.valueOf(cd.getValue().usage().assistantMessagesCount())));
+        asstMsgsCol.setPrefWidth(45);
 
         var ctxCol = new TableColumn<SessionSnapshot, String>("Context");
         ctxCol.setCellValueFactory(cd -> {
@@ -347,7 +352,7 @@ public class SettingsWindow {
                         ? DATE_FMT.format(cd.getValue().createdAt()) : ""));
         createdCol.setPrefWidth(130);
 
-        sessionTable.getColumns().addAll(nameCol, modelCol, statusCol, pctCol, msgsCol, ctxCol, createdCol);
+        sessionTable.getColumns().addAll(nameCol, modelCol, statusCol, pctCol, userMsgsCol, asstMsgsCol, ctxCol, createdCol);
     }
 
     private void onDirectorySelected(String directory) {

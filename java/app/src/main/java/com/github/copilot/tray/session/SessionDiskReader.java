@@ -64,30 +64,28 @@ public final class SessionDiskReader {
         /** Build a UsageSnapshot from real token data when available, heuristic fallback. */
         public UsageSnapshot toUsageSnapshot() {
             if (currentTokens > 0) {
-                // Real token data from session events
                 int limit = DEFAULT_TOKEN_LIMIT;
                 int sysTools = systemTokens + toolDefinitionsTokens;
                 int msgs = conversationTokens;
                 int buffer = Math.max(0, limit - currentTokens);
                 return new UsageSnapshot(currentTokens, limit, userMessages + assistantMessages,
-                        sysTools, msgs, buffer);
+                        userMessages, assistantMessages, sysTools, msgs, buffer);
             }
             if (conversationTokens > 0) {
-                // Partial data from compaction events
                 int total = conversationTokens + systemTokens + toolDefinitionsTokens;
                 int limit = DEFAULT_TOKEN_LIMIT;
                 int buffer = Math.max(0, limit - total);
                 return new UsageSnapshot(total, limit, userMessages + assistantMessages,
+                        userMessages, assistantMessages,
                         systemTokens + toolDefinitionsTokens, conversationTokens, buffer);
             }
-            // No real token data — use message-count heuristic (~800 tokens/message pair)
             int estimatedTokens = (userMessages + assistantMessages) * 800;
             int limit = DEFAULT_TOKEN_LIMIT;
             int buffer = (int) (limit * 0.20);
             int sysTools = (int) (estimatedTokens * 0.30);
             int msgs = estimatedTokens - sysTools;
             return new UsageSnapshot(estimatedTokens, limit, userMessages + assistantMessages,
-                    sysTools, msgs, buffer);
+                    userMessages, assistantMessages, sysTools, msgs, buffer);
         }
 
         public static final DiskStats EMPTY = new DiskStats(0, 0, 0, "", "", "", 0, 0, 0, 0);

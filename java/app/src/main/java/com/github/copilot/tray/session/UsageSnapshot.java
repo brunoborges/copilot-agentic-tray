@@ -16,6 +16,8 @@ public record UsageSnapshot(
         int currentTokens,
         int tokenLimit,
         int messagesCount,
+        int userMessagesCount,
+        int assistantMessagesCount,
         int systemToolsTokens,
         int messagesTokens,
         int bufferTokens
@@ -63,13 +65,12 @@ public record UsageSnapshot(
      */
     public static UsageSnapshot fromSdk(int currentTokens, int tokenLimit, int messagesCount) {
         int buffer = (int) (tokenLimit * 0.20);
-        // Estimate: system/tools is roughly 30% of used tokens, messages is 70%
         int systemTools = (int) (currentTokens * 0.30);
         int messages = currentTokens - systemTools;
-        return new UsageSnapshot(currentTokens, tokenLimit, messagesCount,
+        return new UsageSnapshot(currentTokens, tokenLimit, messagesCount, 0, 0,
                 systemTools, messages, buffer);
     }
 
     /** An empty usage snapshot used as default. */
-    public static final UsageSnapshot EMPTY = new UsageSnapshot(0, 0, 0, 0, 0, 0);
+    public static final UsageSnapshot EMPTY = new UsageSnapshot(0, 0, 0, 0, 0, 0, 0, 0);
 }
