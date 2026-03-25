@@ -51,14 +51,13 @@ public class SettingsWindow {
     private TableView<SessionSnapshot> sessionTable;
     private VBox detailPane;
     private GridPane detailGrid;
+    private UsageTilesPane usageTilesPane;
     private HBox actionBar;
     private Button resumeBtn, renameBtn, deleteBtn;
     private SessionSnapshot selectedSession;
     private String selectedDirectory; // track across refreshes
     private boolean refreshing;
-
-    // Usage dashboard
-    private UsageDashboard usageDashboard;
+    private List<SessionSnapshot> allSessions = List.of();
 
     // Preferences tab controls
     private TextField cliPathField;
@@ -98,10 +97,7 @@ public class SettingsWindow {
 
     public void onSessionChange(Collection<SessionSnapshot> sessions) {
         if (stage != null && stage.isShowing()) {
-            Platform.runLater(() -> {
-                refreshSessions(sessions);
-                if (usageDashboard != null) usageDashboard.refresh(sessions);
-            });
+            Platform.runLater(() -> refreshSessions(sessions));
         }
     }
 
@@ -110,7 +106,6 @@ public class SettingsWindow {
         tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
         tabPane.getTabs().addAll(
                 createSessionsTab(),
-                createUsageTab(),
                 createPruneTab(),
                 createPreferencesTab(),
                 createAboutTab()
@@ -159,6 +154,7 @@ public class SettingsWindow {
                     selectedDirectory = nv;
                     clearDetailPane();
                     onDirectorySelected(nv);
+                    syncUsageTiles(List.of());
                 });
 
         var leftBox = new VBox(toggleBar, directoryList);
@@ -194,6 +190,7 @@ public class SettingsWindow {
                         clearDetailPane();
                     }
                     updateActionButtons(selected.size());
+                    syncUsageTiles(selected);
                 });
 
         // --- Right bottom: detail + actions ---
@@ -208,6 +205,19 @@ public class SettingsWindow {
         placeholderLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #888;");
         detailPane = new VBox(placeholderLabel);
         detailPane.setPadding(new Insets(10));
+
+        // Usage tiles pane (embedded in sub-tab)
+        usageTilesPane = new UsageTilesPane();
+
+        var detailScroll = new ScrollPane(detailPane);
+        detailScroll.setFitToWidth(true);
+
+        var subTabPane = new TabPane();
+        subTabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        subTabPane.getTabs().addAll(
+                new Tab("Details", detailScroll),
+                new Tab("Usage", usageTilesPane));
+        subTabPane.setStyle("-fx-tab-min-height: 24; -fx-tab-max-height: 24;");
 
         resumeBtn = new Button("Resume in Terminal");
         resumeBtn.setDisable(true);
@@ -274,12 +284,9 @@ public class SettingsWindow {
 
         var actionPane = new VBox(4, actionBar, deleteProgress);
 
-        var detailScroll = new ScrollPane(detailPane);
-        detailScroll.setFitToWidth(true);
-        detailScroll.setPrefHeight(200);
-
-        var rightPane = new VBox(sessionTable, new Separator(), detailScroll, actionPane);
-        VBox.setVgrow(sessionTable, Priority.ALWAYS);
+        var rightPane = new VBox(sessionTable, new Separator(), subTabPane, actionPane);
+        VBox.setVgrow(sessionTable, Priority.SOMETIMES);
+        VBox.setVgrow(subTabPane, Priority.ALWAYS);
 
         var split = new SplitPane(leftBox, rightPane);
         split.setDividerPositions(0.28);
@@ -351,6 +358,7 @@ public class SettingsWindow {
     private void refreshSessions(Collection<SessionSnapshot> sessions) {
         if (directoryList == null) return;
 
+        allSessions = List.copyOf(sessions);
         refreshing = true;
         try {
             boolean isRemote = isRemoteSelected();
@@ -430,6 +438,11 @@ public class SettingsWindow {
 
         // Detail pane is NOT rebuilt here — it keeps whatever the user is looking at.
         // It only rebuilds on explicit user click (selection change with refreshing=false).
+
+        // Sync usage tiles to current state
+        var currentSelected = sessionTable.getSelectionModel().getSelectedItems().stream()
+                .filter(java.util.Objects::nonNull).toList();
+        syncUsageTiles(currentSelected);
     }
 
     private boolean isRemoteSelected() {
@@ -443,6 +456,17 @@ public class SettingsWindow {
         resumeBtn.setDisable(none || multi);
         renameBtn.setDisable(none || multi);
         deleteBtn.setDisable(none);
+    }
+
+    private void syncUsageTiles(List<SessionSnapshot> selected) {
+        if (usageTilesPane == null) return;
+        String dirPath = selectedDirectory != null ? stripBadge(selectedDirectory) : null;
+        boolean isRemote = isRemoteSelected();
+        var dirSessions = allSessions.stream()
+                .filter(s -> s.remote() == isRemote)
+                .filter(s -> dirPath != null && dirPath.equals(s.workingDirectory()))
+                .toList();
+        usageTilesPane.update(selected, dirSessions);
     }
 
     private void showSessionDetail(SessionSnapshot session) {
@@ -611,16 +635,6 @@ public class SettingsWindow {
             case ARCHIVED -> "#888888";
             case CORRUPTED -> "#cc44cc";
         };
-    }
-
-    // =====================================================================
-    // Usage Tab
-    // =====================================================================
-
-    private Tab createUsageTab() {
-        usageDashboard = new UsageDashboard(sessionManager);
-        usageDashboard.refresh(sessionManager.getSessions());
-        return new Tab("Usage", usageDashboard);
     }
 
     // =====================================================================
