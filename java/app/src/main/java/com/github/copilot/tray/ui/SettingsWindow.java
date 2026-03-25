@@ -286,7 +286,7 @@ public class SettingsWindow {
 
         var actionPane = new VBox(4, actionBar, deleteProgress);
 
-        var rightPane = new VBox(sessionTable, new Separator(), subTabPane, actionPane);
+        var rightPane = new VBox(usageTilesPane.getAggregateRow(), sessionTable, new Separator(), subTabPane, actionPane);
         VBox.setVgrow(sessionTable, Priority.SOMETIMES);
         VBox.setVgrow(subTabPane, Priority.ALWAYS);
 

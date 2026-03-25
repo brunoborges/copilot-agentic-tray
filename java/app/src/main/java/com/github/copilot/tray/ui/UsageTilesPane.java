@@ -55,6 +55,9 @@ public class UsageTilesPane extends ScrollPane {
     private final Tile activeSessionsTile;
     private final Tile totalTokensTile;
 
+    // Aggregate row (exposed for embedding above the table)
+    private final HBox aggregateRow;
+
     public UsageTilesPane() {
         systemToolsData = new ChartData("System/Tools", 0, COLOR_SYSTEM);
         messagesData    = new ChartData("Messages", 0, COLOR_MSGS);
@@ -121,18 +124,22 @@ public class UsageTilesPane extends ScrollPane {
         var breakdownRow = new HBox(6, systemToolsTile, messagesTokTile, freeSpaceTile, bufferTile);
         breakdownRow.setAlignment(Pos.CENTER);
 
-        var aggregateRow = new HBox(6, totalSessionsTile, activeSessionsTile, totalTokensTile);
-        aggregateRow.setAlignment(Pos.CENTER);
+        aggregateRow = new HBox(6, totalSessionsTile, activeSessionsTile, totalTokensTile);
+        aggregateRow.setAlignment(Pos.CENTER_LEFT);
+        aggregateRow.setPadding(new Insets(4, 0, 4, 0));
 
         var tilesPane = new VBox(6,
                 sectionLabel("Selected Session"), detailRow,
-                sectionLabel("Context Breakdown"), breakdownRow,
-                new Separator(),
-                sectionLabel("Aggregate (Directory)"), aggregateRow);
+                sectionLabel("Context Breakdown"), breakdownRow);
 
         setContent(tilesPane);
         setFitToWidth(true);
         setStyle("-fx-background: #1a1a2e; -fx-background-color: #1a1a2e;");
+    }
+
+    /** Returns the aggregate row node for embedding outside this pane. */
+    public HBox getAggregateRow() {
+        return aggregateRow;
     }
 
     /**
