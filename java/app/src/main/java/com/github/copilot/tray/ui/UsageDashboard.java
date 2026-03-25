@@ -95,7 +95,7 @@ public class UsageDashboard extends VBox {
                 .title("Context Used")
                 .unit("%")
                 .minValue(0).maxValue(100).value(0)
-                .thresholdVisible(true).threshold(80)
+                .thresholdVisible(false).threshold(80)
                 .barColor(COLOR_SYSTEM)
                 .thresholdColor(Tile.TileColor.RED.color)
                 .animated(true)
