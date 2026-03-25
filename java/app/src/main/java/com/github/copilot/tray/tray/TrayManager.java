@@ -32,7 +32,6 @@ public class TrayManager {
     private final Runnable onShowSessions;
     private TrayIcon trayIcon;
     private volatile String cliStatusLabel = "🔴 Copilot CLI is Disconnected";
-    private volatile boolean cliConnected = false;
 
     public TrayManager(SessionManager sessionManager, SdkBridge sdkBridge,
                        TerminalLauncher terminalLauncher, Runnable onOpenSettings,
@@ -49,8 +48,8 @@ public class TrayManager {
             LOG.error("SystemTray is not supported on this platform");
             return;
         }
-        var image = loadIcon(TrayIconState.IDLE);
-        trayIcon = new TrayIcon(image, TrayIconState.IDLE.getTooltip());
+        var image = loadIcon();
+        trayIcon = new TrayIcon(image, "GitHub Copilot Agentic Tray");
         trayIcon.setImageAutoSize(true);
         trayIcon.setPopupMenu(buildMenu(sessionManager.getSessions()));
         try {
@@ -70,20 +69,10 @@ public class TrayManager {
 
     public TrayIcon getTrayIcon() { return trayIcon; }
 
-    private volatile Collection<SessionSnapshot> lastSessions = java.util.List.of();
-
     public void refresh(Collection<SessionSnapshot> sessions) {
         if (trayIcon == null) return;
-        lastSessions = sessions;
         refreshCliStatus();
-        applyIconState(sessions);
         trayIcon.setPopupMenu(buildMenu(sessions));
-    }
-
-    private void applyIconState(Collection<SessionSnapshot> sessions) {
-        var state = computeIconState(sessions);
-        trayIcon.setImage(loadIcon(state));
-        trayIcon.setToolTip(state.getTooltip());
     }
 
     // =====================================================================
@@ -245,21 +234,18 @@ public class TrayManager {
         sdkBridge.fetchCliStatus().thenAccept(status -> {
             var sb = new StringBuilder();
             var stateStr = switch (status.connectionState()) {
-                case CONNECTED -> { cliConnected = true; sb.append("🟢 "); yield "Connected"; }
-                case CONNECTING -> { cliConnected = false; sb.append("🟡 "); yield "Connecting…"; }
-                case DISCONNECTED -> { cliConnected = false; sb.append("🔴 "); yield "Disconnected"; }
-                case ERROR -> { cliConnected = false; sb.append("🔴 "); yield "Error"; }
+                case CONNECTED -> { sb.append("🟢 "); yield "Connected"; }
+                case CONNECTING -> { sb.append("🟡 "); yield "Connecting…"; }
+                case DISCONNECTED -> { sb.append("🔴 "); yield "Disconnected"; }
+                case ERROR -> { sb.append("🔴 "); yield "Error"; }
             };
             sb.append("Copilot CLI");
             if (status.version() != null) sb.append(" ").append(status.version());
             sb.append(" is ").append(stateStr);
             cliStatusLabel = sb.toString();
-            if (trayIcon != null) applyIconState(lastSessions);
         }).exceptionally(ex -> {
             LOG.debug("Failed to fetch CLI status", ex);
-            cliConnected = false;
             cliStatusLabel = "🔴 Copilot CLI is Disconnected";
-            if (trayIcon != null) applyIconState(lastSessions);
             return null;
         });
     }
@@ -284,25 +270,10 @@ public class TrayManager {
         return "…/" + parts[parts.length - 2] + "/" + parts[parts.length - 1];
     }
 
-    private TrayIconState computeIconState(Collection<SessionSnapshot> sessions) {
-        // If CLI is not connected, always show warning (red dot)
-        if (!cliConnected) return TrayIconState.WARNING;
-
-        boolean hasError = sessions.stream().anyMatch(s -> s.status() == SessionStatus.ERROR);
-        boolean hasWarning = sessions.stream().anyMatch(s -> s.usage().tokenUsagePercent() >= 80);
-        boolean hasBusy = sessions.stream().anyMatch(s -> s.status() == SessionStatus.BUSY);
-        boolean hasActive = sessions.stream().anyMatch(s ->
-                s.status() != SessionStatus.ARCHIVED && s.status() != SessionStatus.CORRUPTED);
-        if (hasError || hasWarning) return TrayIconState.WARNING;
-        if (hasBusy) return TrayIconState.BUSY;
-        if (hasActive) return TrayIconState.ACTIVE;
-        return TrayIconState.IDLE;
-    }
-
-    private Image loadIcon(TrayIconState state) {
-        var url = getClass().getResource("/icons/" + state.getIconFilename());
+    private Image loadIcon() {
+        var url = getClass().getResource("/icons/tray-idle.png");
         if (url != null) return Toolkit.getDefaultToolkit().getImage(url);
-        LOG.warn("Icon not found: {}", state.getIconFilename());
+        LOG.warn("Tray icon not found");
         return new java.awt.image.BufferedImage(22, 22, java.awt.image.BufferedImage.TYPE_INT_ARGB);
     }
 
