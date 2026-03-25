@@ -426,7 +426,7 @@ public class SettingsWindow {
     static String stripBadge(String label) {
         if (label == null) return null;
         int idx = label.indexOf("  [");
-        return idx > 0 ? label.substring(0, idx) : label;
+        return idx >= 0 ? label.substring(0, idx) : label;
     }
 
     // =====================================================================
