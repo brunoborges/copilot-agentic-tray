@@ -169,6 +169,15 @@ public class SettingsWindow {
         sessionTable.setPlaceholder(new Label("Select a directory."));
         sessionTable.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         buildSessionTableColumns();
+        sessionTable.setRowFactory(tv -> {
+            var tableRow = new TableRow<SessionSnapshot>();
+            tableRow.setOnMouseClicked(e -> {
+                if (tableRow.isEmpty()) {
+                    sessionTable.getSelectionModel().clearSelection();
+                }
+            });
+            return tableRow;
+        });
         sessionTable.getSelectionModel().selectedItemProperty()
                 .addListener((obs, old, nv) -> {
                     if (refreshing) return;
