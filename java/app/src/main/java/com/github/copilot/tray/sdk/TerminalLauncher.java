@@ -15,81 +15,104 @@ public class TerminalLauncher {
     private static final Logger LOG = LoggerFactory.getLogger(TerminalLauncher.class);
 
     /**
-     * Open a new terminal window running {@code copilot --resume sessionId}.
+     * Open a new terminal window running {@code copilot --resume sessionId}
+     * in the session's original working directory.
      */
-    public void resumeSession(String sessionId) {
-        var command = buildCommand("copilot --resume " + sessionId);
-        LOG.info("Launching terminal for session {}: {}", sessionId, command);
-        launch(command);
+    public void resumeSession(String sessionId, String workingDirectory) {
+        var command = buildCommand("copilot --resume " + sessionId, workingDirectory);
+        LOG.info("Launching terminal for session {} in {}: {}", sessionId, workingDirectory, command);
+        launch(command, workingDirectory);
     }
 
     /**
      * Open a new terminal window running a fresh {@code copilot} session.
      */
     public void newSession() {
-        var command = buildCommand("copilot");
+        var command = buildCommand("copilot", null);
         LOG.info("Launching new terminal session: {}", command);
-        launch(command);
+        launch(command, null);
     }
 
-    private void launch(List<String> command) {
+    private void launch(List<String> command, String workingDirectory) {
         try {
-            new ProcessBuilder(command)
-                    .inheritIO()
-                    .start();
+            var pb = new ProcessBuilder(command).inheritIO();
+            if (workingDirectory != null && !workingDirectory.isEmpty()) {
+                var dir = new File(workingDirectory);
+                if (dir.isDirectory()) {
+                    pb.directory(dir);
+                }
+            }
+            pb.start();
         } catch (IOException e) {
             LOG.error("Failed to launch terminal: {}", command, e);
         }
     }
 
-    private List<String> buildCommand(String shellCmd) {
+    private List<String> buildCommand(String shellCmd, String workingDirectory) {
         String os = System.getProperty("os.name", "").toLowerCase();
 
         if (os.contains("mac")) {
-            return buildMacCommand(shellCmd);
+            return buildMacCommand(shellCmd, workingDirectory);
         } else if (os.contains("win")) {
-            return buildWindowsCommand(shellCmd);
+            return buildWindowsCommand(shellCmd, workingDirectory);
         } else {
-            return buildLinuxCommand(shellCmd);
+            return buildLinuxCommand(shellCmd, workingDirectory);
         }
     }
 
-    private List<String> buildMacCommand(String shellCmd) {
-        // Write a temporary .command file and use `open` to launch it
-        // in the user's default terminal application (iTerm2, Terminal.app, etc.)
+    private List<String> buildMacCommand(String shellCmd, String workingDirectory) {
         try {
             var tmp = File.createTempFile("copilot-tray-", ".command");
             tmp.deleteOnExit();
             try (var writer = new java.io.FileWriter(tmp)) {
                 writer.write("#!/bin/bash\n");
+                if (workingDirectory != null && !workingDirectory.isEmpty()) {
+                    writer.write("cd " + escapeShell(workingDirectory) + "\n");
+                }
                 writer.write(shellCmd + "\n");
             }
             tmp.setExecutable(true);
             return List.of("open", tmp.getAbsolutePath());
         } catch (IOException e) {
             LOG.error("Failed to create .command file", e);
-            // Last-resort fallback
+            var cdPrefix = workingDirectory != null ? "cd " + escapeShell(workingDirectory) + " && " : "";
             return List.of("osascript",
                     "-e", "tell application \"Terminal\"",
                     "-e", "activate",
-                    "-e", "do script \"" + shellCmd + "\"",
+                    "-e", "do script \"" + cdPrefix + shellCmd + "\"",
                     "-e", "end tell");
         }
     }
 
-    private List<String> buildWindowsCommand(String shellCmd) {
-        // Split into args for ProcessBuilder; prefer Windows Terminal, fall back to cmd
-        String[] parts = shellCmd.split(" ");
-        var args = new java.util.ArrayList<>(List.of("cmd", "/c", "start", "wt"));
-        args.addAll(List.of(parts));
+    private List<String> buildWindowsCommand(String shellCmd, String workingDirectory) {
+        var args = new java.util.ArrayList<String>();
+        args.add("cmd");
+        args.add("/c");
+        args.add("start");
+        args.add("wt");
+        if (workingDirectory != null && !workingDirectory.isEmpty()) {
+            args.add("--startingDirectory");
+            args.add(workingDirectory);
+        }
+        for (var part : shellCmd.split(" ")) {
+            args.add(part);
+        }
         return List.copyOf(args);
     }
 
-    private List<String> buildLinuxCommand(String shellCmd) {
+    private List<String> buildLinuxCommand(String shellCmd, String workingDirectory) {
+        var cdPrefix = (workingDirectory != null && !workingDirectory.isEmpty())
+                ? "cd " + escapeShell(workingDirectory) + " && " : "";
+        var fullCmd = cdPrefix + shellCmd;
         return List.of("sh", "-c",
-                "if command -v gnome-terminal > /dev/null 2>&1; then gnome-terminal -- bash -c '" + shellCmd + "; exec bash'; "
-                        + "elif command -v konsole > /dev/null 2>&1; then konsole -e bash -c '" + shellCmd + "; exec bash'; "
-                        + "elif command -v xterm > /dev/null 2>&1; then xterm -e '" + shellCmd + "'; "
-                        + "else x-terminal-emulator -e '" + shellCmd + "'; fi");
+                "if command -v gnome-terminal > /dev/null 2>&1; then gnome-terminal -- bash -c '" + fullCmd + "; exec bash'; "
+                        + "elif command -v konsole > /dev/null 2>&1; then konsole -e bash -c '" + fullCmd + "; exec bash'; "
+                        + "elif command -v xterm > /dev/null 2>&1; then xterm -e '" + fullCmd + "'; "
+                        + "else x-terminal-emulator -e '" + fullCmd + "'; fi");
+    }
+
+    /** Escape a path for safe use in a shell command. */
+    private static String escapeShell(String s) {
+        return "'" + s.replace("'", "'\\''") + "'";
     }
 }

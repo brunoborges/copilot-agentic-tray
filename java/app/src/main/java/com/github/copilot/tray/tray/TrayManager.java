@@ -199,7 +199,7 @@ public class TrayManager {
         // Actions (based on status)
         if (session.status() != SessionStatus.CORRUPTED) {
             sessionMenu.add(actionItem("Resume in Terminal", e ->
-                    terminalLauncher.resumeSession(session.id())));
+                    terminalLauncher.resumeSession(session.id(), session.workingDirectory())));
         }
         if (session.status() == SessionStatus.BUSY) {
             sessionMenu.add(actionItem("Cancel", e ->

@@ -45,7 +45,18 @@ public class TrayApplication {
                                 sessionManager.removeSession(sessionId);
                             });
                 },
-                sessionId -> terminalLauncher.resumeSession(sessionId));
+                sessionId -> {
+                    var session = sessionManager.getSession(sessionId);
+                    String dir = null;
+                    if (session != null) {
+                        dir = session.workingDirectory();
+                    } else {
+                        // Fallback for prune-only sessions not in SessionManager
+                        var stats = SessionDiskReader.readStats(sessionId);
+                        dir = stats.workingDirectory();
+                    }
+                    terminalLauncher.resumeSession(sessionId, dir);
+                });
         this.trayManager = new TrayManager(sessionManager, sdkBridge,
                 terminalLauncher, settingsWindow::show, settingsWindow::showSessionsTab);
     }
