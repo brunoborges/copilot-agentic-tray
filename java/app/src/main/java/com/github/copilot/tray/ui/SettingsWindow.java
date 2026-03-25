@@ -113,6 +113,8 @@ public class SettingsWindow {
         var scene = new Scene(tabPane, 1100, 700);
         var s = new Stage();
         s.setTitle("GitHub Copilot Agentic Tray — Dashboard");
+        s.getIcons().add(new javafx.scene.image.Image(
+                getClass().getResourceAsStream("/icons/tray-idle.png")));
         s.setScene(scene);
         s.setOnCloseRequest(e -> { e.consume(); s.hide(); });
         return s;
