@@ -105,14 +105,22 @@ public class UsageTilesPane extends VBox {
         totalTokensValue = new Label("0");
         totalTokensValue.getStyleClass().add("aggregate-value");
 
-        // Layout — each tile gets a Label header + tile in a VBox
-        var donutCol = new VBox(4, tileLabel("Tokens Used"), donutTile);
+        // Layout — each tile gets a Label header + tile + legend in a VBox
+        var tokensLegend = new HBox(12,
+                legendItem("System/Tools", COLOR_SYSTEM),
+                legendItem("Messages", COLOR_MSGS));
+        tokensLegend.setAlignment(Pos.CENTER);
+        var donutCol = new VBox(4, tileLabel("Tokens Used"), donutTile, tokensLegend);
         donutCol.setAlignment(Pos.CENTER_LEFT);
 
         var contextCol = new VBox(4, tileLabel("Context Used"), contextGauge);
         contextCol.setAlignment(Pos.CENTER_LEFT);
 
-        var tokensCol = new VBox(4, tileLabel("Messages"), messagesDonutTile);
+        var msgsLegend = new HBox(12,
+                legendItem("User", COLOR_USER_MSGS),
+                legendItem("Assistant", COLOR_ASST_MSGS));
+        msgsLegend.setAlignment(Pos.CENTER);
+        var tokensCol = new VBox(4, tileLabel("Messages"), messagesDonutTile, msgsLegend);
         tokensCol.setAlignment(Pos.CENTER_LEFT);
 
         var detailRow = new HBox(6, donutCol, contextCol, tokensCol);
@@ -253,14 +261,6 @@ public class UsageTilesPane extends VBox {
         var box = new HBox(6, titleLbl, valueLabel);
         box.setAlignment(Pos.CENTER_LEFT);
         return box;
-    }
-
-    private HBox buildDonutLegend() {
-        var items = new HBox(12,
-                legendItem("System/Tools", COLOR_SYSTEM),
-                legendItem("Messages", COLOR_MSGS));
-        items.setAlignment(Pos.CENTER);
-        return items;
     }
 
     private static HBox legendItem(String name, Color color) {
