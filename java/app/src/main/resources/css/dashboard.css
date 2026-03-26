@@ -53,21 +53,21 @@
 .detail-header {
     -fx-font-size: 12px;
     -fx-font-weight: bold;
-    -fx-text-fill: #ccc;
+    -fx-text-fill: #555;
     -fx-padding: 6 0 2 0;
 }
 
 .detail-key {
     -fx-font-size: 12px;
     -fx-font-weight: bold;
-    -fx-text-fill: #aaa;
+    -fx-text-fill: #666;
 }
 
 .detail-value {
     -fx-font-family: monospace;
     -fx-font-size: 12px;
     -fx-background-color: transparent;
-    -fx-text-fill: white;
+    -fx-text-fill: #222;
     -fx-padding: 0;
     -fx-background-insets: 0;
     -fx-border-width: 0;
