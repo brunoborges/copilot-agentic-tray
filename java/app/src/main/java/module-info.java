@@ -19,6 +19,7 @@ module com.github.copilot.tray {
     opens com.github.copilot.tray.ui to javafx.fxml, javafx.graphics;
     opens com.github.copilot.tray.config to com.fasterxml.jackson.databind;
     opens com.github.copilot.tray.session to com.fasterxml.jackson.databind;
+    opens com.github.copilot.tray.remote to com.fasterxml.jackson.databind;
     opens com.github.copilot.tray to javafx.graphics;
 
     exports com.github.copilot.tray;
@@ -28,4 +29,5 @@ module com.github.copilot.tray {
     exports com.github.copilot.tray.config;
     exports com.github.copilot.tray.notify;
     exports com.github.copilot.tray.ui;
+    exports com.github.copilot.tray.remote;
 }
