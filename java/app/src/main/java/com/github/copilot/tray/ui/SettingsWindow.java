@@ -168,7 +168,7 @@ public class SettingsWindow {
         root.setExpanded(true);
         directoryList = new TreeView<>(root);
         directoryList.setShowRoot(false);
-        directoryList.setPrefWidth(280);
+        directoryList.setPrefWidth(80);
         directoryList.setCellFactory(tv -> new DirectoryTreeCell(directoryList, this::isRemoteSelected));
         directoryList.getSelectionModel().selectedItemProperty()
                 .addListener((obs, old, nv) -> {
