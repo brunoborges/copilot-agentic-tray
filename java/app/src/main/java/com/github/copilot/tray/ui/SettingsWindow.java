@@ -47,7 +47,7 @@ public class SettingsWindow {
 
     // Sessions tab — directory-first master-detail
     private ToggleGroup locationToggle;
-    private ListView<String> directoryList;
+    private TreeView<String> directoryList;
     private TableView<SessionSnapshot> sessionTable;
     private VBox detailPane;
     private GridPane detailGrid;
@@ -148,19 +148,23 @@ public class SettingsWindow {
         toggleBar.setPadding(new Insets(6));
         toggleBar.setAlignment(Pos.CENTER_LEFT);
 
-        // --- Left: directory list ---
-        directoryList = new ListView<>();
+        // --- Left: directory tree ---
+        var root = new TreeItem<String>("root");
+        root.setExpanded(true);
+        directoryList = new TreeView<>(root);
+        directoryList.setShowRoot(false);
         directoryList.setPrefWidth(280);
-        directoryList.setPlaceholder(new Label("No directories found."));
-        directoryList.setCellFactory(lv -> new DirectoryCell());
+        directoryList.setCellFactory(tv -> new DirectoryTreeCell(directoryList));
         directoryList.getSelectionModel().selectedItemProperty()
                 .addListener((obs, old, nv) -> {
                     if (refreshing) return;
-                    selectedDirectory = nv;
+                    selectedDirectory = nv == null ? null : nv.getValue();
                     clearDetailPane();
-                    onDirectorySelected(nv);
+                    onDirectorySelected(selectedDirectory);
                     syncUsageTiles(List.of());
                 });
+        // Remove alternating row stripes
+        directoryList.setStyle("-fx-background-color: transparent;");
 
         var leftBox = new VBox(toggleBar, directoryList);
         VBox.setVgrow(directoryList, Priority.ALWAYS);
@@ -435,25 +439,30 @@ public class SettingsWindow {
                 dirLabels.add(badge.toString());
             }
 
-            directoryList.setItems(FXCollections.observableArrayList(dirLabels));
+            var root = directoryList.getRoot();
+            root.getChildren().clear();
+            for (var label : dirLabels) {
+                root.getChildren().add(new TreeItem<>(label));
+            }
 
             // Restore directory selection
             if (previousDir != null) {
                 for (int i = 0; i < dirLabels.size(); i++) {
                     if (previousDir.equals(stripBadge(dirLabels.get(i)))) {
-                        directoryList.getSelectionModel().select(i);
+                        directoryList.getSelectionModel().select(root.getChildren().get(i));
                         selectedDirectory = dirLabels.get(i);
                         break;
                     }
                 }
             }
             if (directoryList.getSelectionModel().getSelectedItem() == null && !dirLabels.isEmpty()) {
-                directoryList.getSelectionModel().selectFirst();
+                directoryList.getSelectionModel().select(root.getChildren().getFirst());
                 selectedDirectory = dirLabels.getFirst();
             }
 
             // Populate session table for selected directory
-            onDirectorySelected(directoryList.getSelectionModel().getSelectedItem());
+            var sel = directoryList.getSelectionModel().getSelectedItem();
+            onDirectorySelected(sel == null ? null : sel.getValue());
 
             // Restore session selection (all previously selected IDs)
             if (!previousSelectedIds.isEmpty()) {
@@ -641,7 +650,13 @@ public class SettingsWindow {
     // Directory list cell — styled with icons
     // =====================================================================
 
-    private static class DirectoryCell extends ListCell<String> {
+    private static class DirectoryTreeCell extends TreeCell<String> {
+        private static final String FOLDER_CLOSED = "📁";
+        private static final String FOLDER_OPEN   = "📂";
+        private final TreeView<String> tree;
+
+        DirectoryTreeCell(TreeView<String> tree) { this.tree = tree; }
+
         @Override protected void updateItem(String item, boolean empty) {
             super.updateItem(item, empty);
             if (empty || item == null) {
@@ -649,11 +664,13 @@ public class SettingsWindow {
                 return;
             }
             var dirPath = stripBadge(item);
-            // Show short path: last 2 components
             var shortPath = shortenPath(dirPath);
             var badge = item.substring(dirPath.length());
-            setText("📁 " + shortPath + badge);
-            setStyle("-fx-font-size: 12px;");
+            boolean selected = getTreeItem() != null
+                    && getTreeItem() == tree.getSelectionModel().getSelectedItem();
+            var icon = selected ? FOLDER_OPEN : FOLDER_CLOSED;
+            setText(icon + " " + shortPath + badge);
+            setStyle("-fx-font-size: 12px; -fx-background-color: transparent;");
             setTooltip(new Tooltip(dirPath));
         }
     }
