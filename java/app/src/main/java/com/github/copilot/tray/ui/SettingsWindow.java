@@ -329,13 +329,16 @@ public class SettingsWindow {
 
         // Usage tiles pane (local only)
         usageTilesPane = new UsageTilesPane();
+        usageTilesPane.setMinWidth(480);
+        usageTilesPane.setMaxWidth(480);
 
         detailScroll = new ScrollPane(detailPane);
         detailScroll.setFitToWidth(true);
 
-        // Detail (left 30%) + Usage (right 70%) side by side — local mode
+        // Detail (left) + Usage (right, fixed width) side by side — local mode
         bottomPaneSplit = new SplitPane(detailScroll, usageTilesPane);
         bottomPaneSplit.setDividerPositions(0.30);
+        SplitPane.setResizableWithParent(usageTilesPane, false);
 
         resumeBtn = new Button("Resume in Terminal");
         resumeBtn.setDisable(true);
