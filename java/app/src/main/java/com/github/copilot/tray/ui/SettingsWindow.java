@@ -758,7 +758,7 @@ public class SettingsWindow {
                 if (session.pullRequestState() != null)
                     row = addDetailRow(row, "PR State", session.pullRequestState());
                 if (session.pullRequestUrl() != null)
-                    row = addDetailRow(row, "URL", session.pullRequestUrl(), true);
+                    row = addDetailHyperlink(row, "URL", session.pullRequestUrl(), session.pullRequestUrl());
             }
         } else {
             row = addDetailRow(row, "Directory", session.workingDirectory(), true);
