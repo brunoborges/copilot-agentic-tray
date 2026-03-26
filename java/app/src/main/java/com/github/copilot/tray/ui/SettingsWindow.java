@@ -1123,7 +1123,7 @@ public class SettingsWindow {
         grid.add(cliPathField, 1, row++);
 
         grid.add(new Label("Poll Interval (seconds):"), 0, row);
-        pollIntervalSpinner = new Spinner<>(1, 60, config.getPollIntervalSeconds());
+        pollIntervalSpinner = new Spinner<>(10, 60, Math.max(10, config.getPollIntervalSeconds()));
         grid.add(pollIntervalSpinner, 1, row++);
 
         grid.add(new Label("Context Warning Threshold (%):"), 0, row);
