@@ -763,9 +763,24 @@ public class SettingsWindow {
                 selectedDirectory = dirLabels.getFirst();
             }
 
+            // Save sort order before replacing items
+            var savedSortOrder = new java.util.ArrayList<>(sessionTable.getSortOrder());
+            var savedSortTypes = savedSortOrder.stream()
+                    .map(TableColumn::getSortType)
+                    .toList();
+
             // Populate session table for selected directory
             var sel = directoryList.getSelectionModel().getSelectedItem();
             onDirectorySelected(sel == null ? null : sel.getValue());
+
+            // Restore sort order
+            if (!savedSortOrder.isEmpty()) {
+                sessionTable.getSortOrder().setAll(savedSortOrder);
+                for (int i = 0; i < savedSortOrder.size(); i++) {
+                    savedSortOrder.get(i).setSortType(savedSortTypes.get(i));
+                }
+                sessionTable.sort();
+            }
 
             // Restore session selection (all previously selected IDs)
             if (!previousSelectedIds.isEmpty()) {
