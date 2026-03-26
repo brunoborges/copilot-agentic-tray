@@ -219,7 +219,6 @@ public class SettingsWindow {
         bottomPaneSplit.setDividerPositions(0.30);
         bottomPaneSplit.setPrefHeight(300);
         bottomPaneSplit.setMinHeight(250);
-        bottomPaneSplit.setMaxHeight(400);
 
         resumeBtn = new Button("Resume in Terminal");
         resumeBtn.setDisable(true);
@@ -306,7 +305,8 @@ public class SettingsWindow {
         var topPane = new VBox(usageTilesPane.getAggregateRow(), sessionTable);
         VBox.setVgrow(sessionTable, Priority.ALWAYS);
 
-        // Bottom: details + usage side by side, plus actions
+        // Bottom: details + usage side by side, plus actions pinned at bottom
+        VBox.setVgrow(bottomPaneSplit, Priority.ALWAYS);
         var bottomPane = new VBox(bottomPaneSplit, actionPane);
 
         // Vertical split so user can resize table vs detail area
