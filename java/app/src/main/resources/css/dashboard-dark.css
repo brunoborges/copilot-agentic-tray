@@ -124,6 +124,7 @@
     -fx-background-color: #1e1e2e;
     -fx-border-color: transparent;
     -fx-padding: 0;
+    -fx-text-background-color: #e0e0e0;
 }
 
 .table-view .column-header-background {
@@ -148,6 +149,7 @@
     -fx-background-color: #1e1e2e;
     -fx-border-color: transparent;
     -fx-cell-size: 28;
+    -fx-text-background-color: #e0e0e0;
 }
 
 .table-view .table-row-cell:odd {
@@ -160,6 +162,7 @@
 
 .table-view .table-row-cell:selected {
     -fx-background-color: #04395e;
+    -fx-text-background-color: #ffffff;
 }
 
 .table-view .table-row-cell:selected .text {
