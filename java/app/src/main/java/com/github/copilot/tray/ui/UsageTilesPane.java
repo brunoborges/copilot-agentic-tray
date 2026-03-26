@@ -31,14 +31,21 @@ public class UsageTilesPane extends VBox {
     private static final Color COLOR_MSGS      = Color.web("#c0c0c0");
     private static final Color COLOR_AVAILABLE = Color.web("#4a4a6a");
 
+    private static final Color COLOR_USER_MSGS = Color.web("#5da5da");
+    private static final Color COLOR_ASST_MSGS = Color.web("#faa43a");
+
     // Donut chart data
     private final ChartData systemToolsData;
     private final ChartData messagesData;
 
+    // Messages donut chart data
+    private final ChartData userMsgsData;
+    private final ChartData asstMsgsData;
+
     // Detail tiles
     private final Tile donutTile;
     private final Tile contextGauge;
-    private final Tile tokenCountTile;
+    private final Tile messagesDonutTile;
 
     // Breakdown tiles
     private final Tile systemToolsTile;
@@ -56,6 +63,8 @@ public class UsageTilesPane extends VBox {
     public UsageTilesPane() {
         systemToolsData = new ChartData("System/Tools", 0, COLOR_SYSTEM);
         messagesData    = new ChartData("Messages", 0, COLOR_MSGS);
+        userMsgsData    = new ChartData("User", 0, COLOR_USER_MSGS);
+        asstMsgsData    = new ChartData("Assistant", 0, COLOR_ASST_MSGS);
 
         donutTile = TileBuilder.create()
                 .skinType(Tile.SkinType.DONUT_CHART)
@@ -77,11 +86,11 @@ public class UsageTilesPane extends VBox {
                 .textSize(Tile.TextSize.SMALLER)
                 .build();
 
-        tokenCountTile = TileBuilder.create()
-                .skinType(Tile.SkinType.NUMBER)
+        messagesDonutTile = TileBuilder.create()
+                .skinType(Tile.SkinType.DONUT_CHART)
                 .prefSize(TILE_W, TILE_H)
-                .description("of 0")
-                .value(0).decimals(0).animated(false)
+                .chartData(userMsgsData, asstMsgsData)
+                .animated(false)
                 .textSize(Tile.TextSize.SMALLER)
                 .build();
 
@@ -103,7 +112,7 @@ public class UsageTilesPane extends VBox {
         var contextCol = new VBox(4, tileLabel("Context Used"), contextGauge);
         contextCol.setAlignment(Pos.CENTER_LEFT);
 
-        var tokensCol = new VBox(4, tileLabel("Tokens Used"), tokenCountTile);
+        var tokensCol = new VBox(4, tileLabel("Messages"), messagesDonutTile);
         tokensCol.setAlignment(Pos.CENTER_LEFT);
 
         var detailRow = new HBox(6, donutCol, contextCol, tokensCol);
@@ -171,8 +180,8 @@ public class UsageTilesPane extends VBox {
 
         contextGauge.setValue(u.tokenUsagePercent());
 
-        tokenCountTile.setValue(u.currentTokens());
-        tokenCountTile.setDescription("of " + formatTokens(u.tokenLimit()));
+        userMsgsData.setValue(u.userMessagesCount());
+        asstMsgsData.setValue(u.assistantMessagesCount());
 
         systemToolsTile.setValue(u.systemToolsTokens());
         systemToolsTile.setDescription(String.format("%.1f%%", u.systemToolsPercent()));
@@ -183,16 +192,14 @@ public class UsageTilesPane extends VBox {
     }
 
     private void updateAggregateDetailTiles(List<SessionSnapshot> selected) {
-        int totalTokens = selected.stream().mapToInt(s -> s.usage().currentTokens()).sum();
-
         systemToolsData.setValue(selected.stream().mapToInt(s -> s.usage().systemToolsTokens()).sum());
         messagesData.setValue(selected.stream().mapToInt(s -> s.usage().messagesTokens()).sum());
 
         double avgPct = selected.stream().mapToDouble(s -> s.usage().tokenUsagePercent()).average().orElse(0);
         contextGauge.setValue(avgPct);
 
-        tokenCountTile.setValue(totalTokens);
-        tokenCountTile.setDescription(selected.size() + " sessions selected");
+        userMsgsData.setValue(selected.stream().mapToInt(s -> s.usage().userMessagesCount()).sum());
+        asstMsgsData.setValue(selected.stream().mapToInt(s -> s.usage().assistantMessagesCount()).sum());
 
         int sysTokSum = selected.stream().mapToInt(s -> s.usage().systemToolsTokens()).sum();
         int msgTokSum = selected.stream().mapToInt(s -> s.usage().messagesTokens()).sum();
@@ -209,8 +216,8 @@ public class UsageTilesPane extends VBox {
         systemToolsData.setValue(0);
         messagesData.setValue(0);
         contextGauge.setValue(0);
-        tokenCountTile.setValue(0);
-        tokenCountTile.setDescription("of 0");
+        userMsgsData.setValue(0);
+        asstMsgsData.setValue(0);
         for (var tile : List.of(systemToolsTile, messagesTokTile, availableTile)) {
             tile.setValue(0);
             tile.setDescription("");
