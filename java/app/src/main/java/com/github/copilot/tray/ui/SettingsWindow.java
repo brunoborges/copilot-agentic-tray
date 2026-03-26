@@ -305,16 +305,18 @@ public class SettingsWindow {
         var topPane = new VBox(usageTilesPane.getAggregateRow(), sessionTable);
         VBox.setVgrow(sessionTable, Priority.ALWAYS);
 
-        // Bottom: details + usage side by side, plus actions pinned at bottom
-        VBox.setVgrow(bottomPaneSplit, Priority.ALWAYS);
-        var bottomPane = new VBox(bottomPaneSplit, actionPane);
-
-        // Vertical split so user can resize table vs detail area
-        var rightSplit = new SplitPane(topPane, bottomPane);
+        // Vertical split: table vs detail area (bottomPaneSplit can have maxHeight)
+        bottomPaneSplit.setMaxHeight(400);
+        var rightSplit = new SplitPane(topPane, bottomPaneSplit);
         rightSplit.setOrientation(javafx.geometry.Orientation.VERTICAL);
         rightSplit.setDividerPositions(0.5);
 
-        var split = new SplitPane(leftBox, rightSplit);
+        // actionPane pinned at bottom, outside the SplitPane
+        var rightContainer = new javafx.scene.layout.BorderPane();
+        rightContainer.setCenter(rightSplit);
+        rightContainer.setBottom(actionPane);
+
+        var split = new SplitPane(leftBox, rightContainer);
         split.setDividerPositions(0.28);
 
         return new Tab("Sessions", split);
