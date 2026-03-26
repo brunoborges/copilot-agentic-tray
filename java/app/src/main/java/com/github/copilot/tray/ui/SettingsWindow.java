@@ -165,10 +165,10 @@ public class SettingsWindow {
                 });
         // Style: white background, dark text even when selected
         directoryList.setStyle(
-                "-fx-background-color: white; -fx-background-insets: 0; -fx-padding: 0;");
+                "-fx-background-color: #f5f5f5; -fx-background-insets: 0; -fx-padding: 0;");
 
         var leftBox = new VBox(toggleBar, directoryList);
-        leftBox.setStyle("-fx-background-color: white;");
+        leftBox.setStyle("-fx-background-color: #f5f5f5;");
         VBox.setVgrow(directoryList, Priority.ALWAYS);
 
         // --- Right top: session table ---
