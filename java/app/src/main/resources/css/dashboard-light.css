@@ -490,7 +490,7 @@
 /* --- Section labels --- */
 
 .section-label {
-    -fx-font-size: 11px;
+    -fx-font-size: 13px;
     -fx-font-weight: bold;
     -fx-text-fill: #717171;
 }
@@ -503,7 +503,7 @@
 }
 
 .tile-title-label {
-    -fx-font-size: 12px;
+    -fx-font-size: 11px;
     -fx-font-weight: bold;
     -fx-text-fill: #717171;
     -fx-alignment: center;

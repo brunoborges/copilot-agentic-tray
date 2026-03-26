@@ -109,7 +109,19 @@ public class UsageTilesPane extends VBox {
         var detailRow = new HBox(6, donutCol, contextCol, tokensCol);
         detailRow.setAlignment(Pos.CENTER_LEFT);
 
-        var breakdownRow = new HBox(6, systemToolsTile, messagesTokTile, freeSpaceTile, bufferTile);
+        var sysToolsCol = new VBox(4, tileLabel("System/Tools"), systemToolsTile);
+        sysToolsCol.setAlignment(Pos.CENTER_LEFT);
+
+        var messagesCol = new VBox(4, tileLabel("Messages"), messagesTokTile);
+        messagesCol.setAlignment(Pos.CENTER_LEFT);
+
+        var freeSpaceCol = new VBox(4, tileLabel("Free Space"), freeSpaceTile);
+        freeSpaceCol.setAlignment(Pos.CENTER_LEFT);
+
+        var bufferCol = new VBox(4, tileLabel("Buffer"), bufferTile);
+        bufferCol.setAlignment(Pos.CENTER_LEFT);
+
+        var breakdownRow = new HBox(6, sysToolsCol, messagesCol, freeSpaceCol, bufferCol);
         breakdownRow.setAlignment(Pos.CENTER_LEFT);
 
         aggregateRow = new HBox(6, totalSessionsTile, activeSessionsTile, totalTokensTile);
@@ -223,7 +235,7 @@ public class UsageTilesPane extends VBox {
         return TileBuilder.create()
                 .skinType(Tile.SkinType.PERCENTAGE)
                 .prefSize(TILE_W, SMALL_H)
-                .title(title).unit("%")
+                .unit("%")
                 .maxValue(100).value(0)
                 .barColor(color)
                 .animated(false)

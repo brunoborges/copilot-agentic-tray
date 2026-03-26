@@ -479,10 +479,9 @@
 /* --- Section labels --- */
 
 .section-label {
-    -fx-font-size: 11px;
+    -fx-font-size: 13px;
     -fx-font-weight: bold;
     -fx-text-fill: #b0b0c4;
-    -fx-text-transform: uppercase;
 }
 
 /* --- Donut legend --- */
@@ -493,7 +492,7 @@
 }
 
 .tile-title-label {
-    -fx-font-size: 12px;
+    -fx-font-size: 11px;
     -fx-font-weight: bold;
     -fx-text-fill: #b0b0c4;
     -fx-alignment: center;
