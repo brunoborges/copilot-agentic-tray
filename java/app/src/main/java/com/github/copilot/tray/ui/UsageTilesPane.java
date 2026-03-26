@@ -45,10 +45,10 @@ public class UsageTilesPane extends VBox {
     private final Tile messagesTokTile;
     private final Tile availableTile;
 
-    // Aggregate tiles
-    private final Tile totalSessionsTile;
-    private final Tile activeSessionsTile;
-    private final Tile totalTokensTile;
+    // Aggregate labels
+    private final Label totalSessionsValue;
+    private final Label activeSessionsValue;
+    private final Label totalTokensValue;
 
     // Aggregate row (exposed for embedding above the table)
     private final HBox aggregateRow;
@@ -89,9 +89,12 @@ public class UsageTilesPane extends VBox {
         messagesTokTile = buildBreakdownTile(COLOR_MSGS);
         availableTile   = buildBreakdownTile(COLOR_AVAILABLE);
 
-        totalSessionsTile = buildAggregateTile();
-        activeSessionsTile = buildAggregateTile();
-        totalTokensTile = buildAggregateTile();
+        totalSessionsValue = new Label("0");
+        totalSessionsValue.getStyleClass().add("aggregate-value");
+        activeSessionsValue = new Label("0");
+        activeSessionsValue.getStyleClass().add("aggregate-value");
+        totalTokensValue = new Label("0");
+        totalTokensValue.getStyleClass().add("aggregate-value");
 
         // Layout — each tile gets a Label header + tile in a VBox
         var donutCol = new VBox(4, tileLabel("Tokens Used"), donutTile);
@@ -118,18 +121,13 @@ public class UsageTilesPane extends VBox {
         var breakdownRow = new HBox(6, sysToolsCol, messagesCol, availableCol);
         breakdownRow.setAlignment(Pos.CENTER_LEFT);
 
-        var totalCol = new VBox(4, tileLabel("Total Sessions"), totalSessionsTile);
-        totalCol.setAlignment(Pos.CENTER_LEFT);
-
-        var activeCol = new VBox(4, tileLabel("Active Sessions"), activeSessionsTile);
-        activeCol.setAlignment(Pos.CENTER_LEFT);
-
-        var totalTokCol = new VBox(4, tileLabel("Total Tokens"), totalTokensTile);
-        totalTokCol.setAlignment(Pos.CENTER_LEFT);
-
-        aggregateRow = new HBox(6, totalCol, activeCol, totalTokCol);
+        aggregateRow = new HBox(20,
+                aggregateItem("Total Sessions", totalSessionsValue),
+                aggregateItem("Active", activeSessionsValue),
+                aggregateItem("Total Tokens", totalTokensValue));
         aggregateRow.setAlignment(Pos.CENTER_LEFT);
-        aggregateRow.setPadding(new Insets(4, 0, 4, 0));
+        aggregateRow.setPadding(new Insets(6, 8, 6, 8));
+        aggregateRow.getStyleClass().add("aggregate-row");
 
         var tilesPane = new VBox(6,
                 sectionLabel("Selected Session(s)"), detailRow,
@@ -220,11 +218,13 @@ public class UsageTilesPane extends VBox {
     }
 
     private void updateAggregateTiles(Collection<? extends SessionSnapshot> sessions) {
-        totalSessionsTile.setValue(sessions.size());
-        activeSessionsTile.setValue(sessions.stream()
-                .filter(s -> s.status() != SessionStatus.ARCHIVED).count());
-        totalTokensTile.setValue(sessions.stream()
-                .mapToInt(s -> s.usage().currentTokens()).sum());
+        totalSessionsValue.setText(String.valueOf(sessions.size()));
+        long active = sessions.stream()
+                .filter(s -> s.status() != SessionStatus.ARCHIVED).count();
+        activeSessionsValue.setText(String.valueOf(active));
+        int tokens = sessions.stream()
+                .mapToInt(s -> s.usage().currentTokens()).sum();
+        totalTokensValue.setText(formatTokens(tokens));
     }
 
     // --- Factory helpers ---
@@ -241,14 +241,12 @@ public class UsageTilesPane extends VBox {
                 .build();
     }
 
-    private Tile buildAggregateTile() {
-        return TileBuilder.create()
-                .skinType(Tile.SkinType.NUMBER)
-                .prefSize(TILE_W, SMALL_H)
-                .value(0).decimals(0)
-                .animated(false)
-                .textSize(Tile.TextSize.SMALLER)
-                .build();
+    private static HBox aggregateItem(String title, Label valueLabel) {
+        var titleLbl = new Label(title);
+        titleLbl.getStyleClass().add("aggregate-title");
+        var box = new HBox(6, titleLbl, valueLabel);
+        box.setAlignment(Pos.CENTER_LEFT);
+        return box;
     }
 
     private HBox buildDonutLegend() {

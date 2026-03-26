@@ -509,6 +509,24 @@
     -fx-alignment: center;
 }
 
+/* --- Aggregate row --- */
+
+.aggregate-row {
+    -fx-background-color: #f0f0f0;
+    -fx-border-color: transparent transparent #d4d4d4 transparent;
+}
+
+.aggregate-title {
+    -fx-font-size: 12px;
+    -fx-text-fill: #717171;
+}
+
+.aggregate-value {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1e1e1e;
+}
+
 /* --- Detail pane --- */
 
 .detail-header {
