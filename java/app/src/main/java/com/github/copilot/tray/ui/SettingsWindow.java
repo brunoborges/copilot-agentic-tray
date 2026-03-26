@@ -111,9 +111,11 @@ public class SettingsWindow {
                 createPreferencesTab(),
                 createAboutTab()
         );
-        var scene = new Scene(tabPane, 1100, 700);
+        var scene = new Scene(tabPane, 1100, 800);
         var s = new Stage();
         s.setTitle("GitHub Copilot Agentic Tray — Dashboard");
+        s.setMinHeight(700);
+        s.setMinWidth(900);
         s.getIcons().add(new javafx.scene.image.Image(
                 getClass().getResourceAsStream("/icons/tray-idle.png")));
         s.setScene(scene);
@@ -218,8 +220,6 @@ public class SettingsWindow {
         // Detail (left 30%) + Usage (right 70%) side by side
         var bottomPaneSplit = new SplitPane(detailScroll, usageTilesPane);
         bottomPaneSplit.setDividerPositions(0.30);
-        bottomPaneSplit.setPrefHeight(350);
-        bottomPaneSplit.setMinHeight(300);
 
         resumeBtn = new Button("Resume in Terminal");
         resumeBtn.setDisable(true);
@@ -306,22 +306,21 @@ public class SettingsWindow {
 
         var actionPane = new VBox(4, actionBar, deleteProgress);
 
-        // Top: aggregate tiles + session table
+        // Top: aggregate tiles + session table (grows to fill)
         var topPane = new VBox(usageTilesPane.getAggregateRow(), sessionTable);
         VBox.setVgrow(sessionTable, Priority.ALWAYS);
+        topPane.setMinHeight(200);
+        VBox.setVgrow(topPane, Priority.ALWAYS);
 
-        // Vertical split: table vs detail area (bottomPaneSplit can have maxHeight)
-        bottomPaneSplit.setMaxHeight(400);
-        var rightSplit = new SplitPane(topPane, bottomPaneSplit);
-        rightSplit.setOrientation(javafx.geometry.Orientation.VERTICAL);
-        rightSplit.setDividerPositions(0.5);
+        // Bottom: fixed-height detail + usage side by side
+        bottomPaneSplit.setPrefHeight(375);
+        bottomPaneSplit.setMinHeight(375);
+        bottomPaneSplit.setMaxHeight(375);
 
-        // actionPane pinned at bottom, outside the SplitPane
-        var rightContainer = new javafx.scene.layout.BorderPane();
-        rightContainer.setCenter(rightSplit);
-        rightContainer.setBottom(actionPane);
+        // Right side: table on top, detail below, action bar pinned at bottom
+        var rightBox = new VBox(topPane, bottomPaneSplit, actionPane);
 
-        var split = new SplitPane(leftBox, rightContainer);
+        var split = new SplitPane(leftBox, rightBox);
         split.setDividerPositions(0.28);
 
         return new Tab("Sessions", split);
