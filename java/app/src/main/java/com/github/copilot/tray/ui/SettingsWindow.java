@@ -163,13 +163,13 @@ public class SettingsWindow {
 
         sessionsBtn.setSelected(true);
 
-        sideBar = new VBox(0, sessionsBtn, pruneBtn, prefsBtn);
+        sideBar = new VBox(0, sessionsBtn, pruneBtn);
         sideBar.getStyleClass().add("activity-bar");
 
-        // About button pinned to bottom
+        // Preferences and About pinned to bottom
         var spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
-        sideBar.getChildren().addAll(spacer, aboutBtn);
+        sideBar.getChildren().addAll(spacer, prefsBtn, aboutBtn);
 
         var root = new HBox(sideBar, contentArea);
         HBox.setHgrow(contentArea, Priority.ALWAYS);

@@ -76,9 +76,9 @@
 .activity-bar {
     -fx-background-color: #ececec;
     -fx-padding: 4 0 4 0;
-    -fx-pref-width: 64;
-    -fx-min-width: 64;
-    -fx-max-width: 64;
+    -fx-pref-width: 72;
+    -fx-min-width: 72;
+    -fx-max-width: 72;
     -fx-border-color: transparent #d4d4d4 transparent transparent;
     -fx-border-width: 0 1 0 0;
 }
@@ -88,9 +88,9 @@
     -fx-background-radius: 0;
     -fx-padding: 10 0;
     -fx-cursor: hand;
-    -fx-pref-width: 64;
-    -fx-min-width: 64;
-    -fx-max-width: 64;
+    -fx-pref-width: 72;
+    -fx-min-width: 72;
+    -fx-max-width: 72;
     -fx-alignment: center;
     -fx-border-color: transparent transparent transparent transparent;
     -fx-border-width: 0 0 0 2;
