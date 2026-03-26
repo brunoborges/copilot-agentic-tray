@@ -215,11 +215,11 @@ public class SettingsWindow {
         detailScroll.setFitToWidth(true);
 
         // Detail (left 30%) + Usage (right 70%) side by side
-        var detailUsageSplit = new SplitPane(detailScroll, usageTilesPane);
-        detailUsageSplit.setDividerPositions(0.30);
-        detailUsageSplit.setPrefHeight(250);
-        detailUsageSplit.setMinHeight(200);
-        detailUsageSplit.setMaxHeight(300);
+        var bottomPaneSplit = new SplitPane(detailScroll, usageTilesPane);
+        bottomPaneSplit.setDividerPositions(0.30);
+        bottomPaneSplit.setPrefHeight(250);
+        bottomPaneSplit.setMinHeight(200);
+        bottomPaneSplit.setMaxHeight(300);
 
         resumeBtn = new Button("Resume in Terminal");
         resumeBtn.setDisable(true);
@@ -307,7 +307,7 @@ public class SettingsWindow {
         VBox.setVgrow(sessionTable, Priority.ALWAYS);
 
         // Bottom: details + usage side by side, plus actions
-        var bottomPane = new VBox(detailUsageSplit, actionPane);
+        var bottomPane = new VBox(bottomPaneSplit, actionPane);
 
         // Vertical split so user can resize table vs detail area
         var rightSplit = new SplitPane(topPane, bottomPane);
