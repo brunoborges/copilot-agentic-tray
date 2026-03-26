@@ -33,11 +33,10 @@ public class SessionEventLogWindow {
         logArea = new TextArea();
         logArea.setEditable(false);
         logArea.setWrapText(true);
-        logArea.setStyle("-fx-font-family: monospace; -fx-font-size: 12px; "
-                + "-fx-control-inner-background: #1a1a2e; -fx-text-fill: #cccccc;");
+        logArea.getStyleClass().add("event-log-area");
 
         var header = new Label("Session: " + sessionName + "  (" + sessionId + ")");
-        header.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #aaa;");
+        header.getStyleClass().add("event-log-header");
         header.setPadding(new Insets(4));
 
         var root = new VBox(4, header, logArea);
@@ -48,7 +47,9 @@ public class SessionEventLogWindow {
         stage.setTitle("Event Log — " + sessionName);
         stage.getIcons().add(new javafx.scene.image.Image(
                 getClass().getResourceAsStream("/icons/tray-idle.png")));
-        stage.setScene(new Scene(root, 700, 500));
+        var scene = new Scene(root, 700, 500);
+        scene.getStylesheets().add(getClass().getResource("/css/dashboard.css").toExternalForm());
+        stage.setScene(scene);
         stage.setOnCloseRequest(e -> {
             appendLog("— Detaching from session —");
             onClose.run();

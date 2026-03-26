@@ -112,6 +112,7 @@ public class SettingsWindow {
                 createAboutTab()
         );
         var scene = new Scene(tabPane, 1100, 800);
+        scene.getStylesheets().add(getClass().getResource("/css/dashboard.css").toExternalForm());
         var s = new Stage();
         s.setTitle("GitHub Copilot Agentic Tray — Dashboard");
         s.setMinHeight(700);
@@ -164,11 +165,10 @@ public class SettingsWindow {
                     syncUsageTiles(List.of());
                 });
         // Style: white background, dark text even when selected
-        directoryList.setStyle(
-                "-fx-background-color: #f5f5f5; -fx-background-insets: 0; -fx-padding: 0;");
+        directoryList.getStyleClass().add("directory-tree");
 
         var leftBox = new VBox(toggleBar, directoryList);
-        leftBox.setStyle("-fx-background-color: #f5f5f5;");
+        leftBox.getStyleClass().add("left-panel");
         VBox.setVgrow(directoryList, Priority.ALWAYS);
 
         // --- Right top: session table ---
@@ -213,7 +213,7 @@ public class SettingsWindow {
                 new ColumnConstraints(90),
                 new ColumnConstraints());
         var placeholderLabel = new Label("Select a session to view details.");
-        placeholderLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #888;");
+        placeholderLabel.getStyleClass().add("placeholder-label");
         detailPane = new VBox(placeholderLabel);
         detailPane.setPadding(new Insets(10));
 
@@ -264,7 +264,7 @@ public class SettingsWindow {
         });
         deleteBtn = new Button("Delete");
         deleteBtn.setDisable(true);
-        deleteBtn.setStyle("-fx-text-fill: red;");
+        deleteBtn.getStyleClass().add("delete-btn");
         var deleteProgress = new ProgressBar(0);
         deleteProgress.setMaxWidth(Double.MAX_VALUE);
         deleteProgress.setVisible(false);
@@ -304,7 +304,7 @@ public class SettingsWindow {
                     });
         });
         var heightLabel = new Label("h: --");
-        heightLabel.setStyle("-fx-text-fill: black; -fx-font-size: 11;");
+        heightLabel.getStyleClass().add("debug-label");
         bottomPaneSplit.heightProperty().addListener((_, _, h) ->
                 heightLabel.setText("h: %.0f".formatted(h.doubleValue())));
         actionBar = new HBox(8, resumeBtn, attachBtn, renameBtn, deleteBtn, heightLabel);
@@ -348,9 +348,10 @@ public class SettingsWindow {
         statusCol.setCellFactory(col -> new TableCell<>() {
             @Override protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty || item == null) { setText(null); setStyle(""); return; }
+                getStyleClass().removeIf(c -> c.startsWith("status-"));
+                if (empty || item == null) { setText(null); return; }
                 setText(item);
-                setStyle("-fx-text-fill: " + statusColor(item) + "; -fx-font-weight: bold;");
+                getStyleClass().add("status-" + item.toLowerCase());
             }
         });
 
@@ -561,13 +562,13 @@ public class SettingsWindow {
 
     private void showMultiDetail(java.util.List<SessionSnapshot> selected) {
         var label = new Label(selected.size() + " sessions selected");
-        label.setStyle("-fx-font-size: 12px; -fx-text-fill: #888;");
+        label.getStyleClass().add("placeholder-label");
         detailPane.getChildren().setAll(label);
     }
 
     private void clearDetailPane() {
         var placeholder = new Label("Select a session to view details.");
-        placeholder.setStyle("-fx-font-size: 12px; -fx-text-fill: #888;");
+        placeholder.getStyleClass().add("placeholder-label");
         detailPane.getChildren().setAll(placeholder);
     }
 
@@ -577,30 +578,29 @@ public class SettingsWindow {
 
     private int addDetailRow(int row, String label, String value, boolean showCopy) {
         var keyLabel = new Label(label);
-        keyLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #aaa;");
+        keyLabel.getStyleClass().add("detail-key");
         keyLabel.setMinWidth(Region.USE_PREF_SIZE);
 
         var valueField = new TextField(value != null ? value : "");
         valueField.setEditable(false);
         valueField.setPrefColumnCount(value != null ? Math.max(value.length(), 1) : 1);
-        valueField.setStyle("-fx-font-family: monospace; -fx-font-size: 12px; "
-                + "-fx-background-color: transparent; -fx-border-color: transparent; -fx-padding: 0;");
+        valueField.getStyleClass().add("detail-value");
 
         javafx.scene.Node valueRow;
         if (showCopy) {
             var copyIcon = createCopyIcon();
             var copyBtn = new Button();
             copyBtn.setGraphic(copyIcon);
-            copyBtn.setStyle("-fx-padding: 2; -fx-background-color: transparent; -fx-cursor: hand;");
+            copyBtn.getStyleClass().add("copy-btn");
             copyBtn.setTooltip(new Tooltip("Copy to clipboard"));
             copyBtn.setOnAction(e -> {
                 var cb = javafx.scene.input.Clipboard.getSystemClipboard();
                 var content = new javafx.scene.input.ClipboardContent();
                 content.putString(value != null ? value : "");
                 cb.setContent(content);
-                copyBtn.setStyle("-fx-padding: 2; -fx-background-color: transparent; -fx-cursor: hand; -fx-opacity: 0.5;");
+                copyBtn.setOpacity(0.5);
                 javafx.animation.PauseTransition flash = new javafx.animation.PauseTransition(javafx.util.Duration.millis(300));
-                flash.setOnFinished(ev -> copyBtn.setStyle("-fx-padding: 2; -fx-background-color: transparent; -fx-cursor: hand;"));
+                flash.setOnFinished(ev -> copyBtn.setOpacity(1.0));
                 flash.play();
             });
             valueRow = new HBox(2, valueField, copyBtn);
@@ -636,7 +636,7 @@ public class SettingsWindow {
 
     private int addSectionHeader(int row, String title) {
         var header = new Label(title);
-        header.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #ccc; -fx-padding: 6 0 2 0;");
+        header.getStyleClass().add("detail-header");
         detailGrid.add(header, 0, row, 2, 1);
         return row + 1;
     }
@@ -663,7 +663,6 @@ public class SettingsWindow {
             super.updateItem(item, empty);
             if (empty || item == null) {
                 setText(null); setGraphic(null);
-                setStyle("-fx-background-color: transparent;");
                 return;
             }
             var dirPath = stripBadge(item);
@@ -673,13 +672,6 @@ public class SettingsWindow {
                     && getTreeItem() == tree.getSelectionModel().getSelectedItem();
             var icon = selected ? FOLDER_OPEN : FOLDER_CLOSED;
             setText(icon + " " + shortPath + badge);
-            if (selected) {
-                setStyle("-fx-font-size: 12px; -fx-text-fill: #1a1a2e; "
-                        + "-fx-background-color: #d0e0f0;");
-            } else {
-                setStyle("-fx-font-size: 12px; -fx-text-fill: #333333; "
-                        + "-fx-background-color: transparent;");
-            }
             setTooltip(new Tooltip(dirPath));
         }
     }
@@ -695,17 +687,6 @@ public class SettingsWindow {
         var parts = path.replace('\\', '/').split("/");
         if (parts.length <= 2) return path;
         return "…/" + parts[parts.length - 2] + "/" + parts[parts.length - 1];
-    }
-
-    private static String statusColor(String statusName) {
-        return switch (SessionStatus.valueOf(statusName)) {
-            case ACTIVE -> "#4488ff";
-            case BUSY -> "#ff8844";
-            case IDLE -> "#44cc44";
-            case ERROR -> "#ff4444";
-            case ARCHIVED -> "#888888";
-            case CORRUPTED -> "#cc44cc";
-        };
     }
 
     private static String formatTokens(int n) {
@@ -872,7 +853,7 @@ public class SettingsWindow {
 
     private Label createSectionHeader(String text) {
         var label = new Label(text);
-        label.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+        label.getStyleClass().add("about-heading");
         return label;
     }
 

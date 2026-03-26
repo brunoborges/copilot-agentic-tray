@@ -1,0 +1,179 @@
+/* ==========================================================================
+   GitHub Copilot Agentic Tray — Dashboard Stylesheet
+   ========================================================================== */
+
+/* --- Directory tree (left panel) --- */
+
+.directory-tree {
+    -fx-background-color: #f5f5f5;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+}
+
+.directory-tree .tree-cell {
+    -fx-font-size: 12px;
+    -fx-text-fill: #333333;
+    -fx-background-color: transparent;
+}
+
+.directory-tree .tree-cell:selected {
+    -fx-text-fill: #1a1a2e;
+    -fx-background-color: #d0e0f0;
+}
+
+.directory-tree .tree-cell:empty {
+    -fx-background-color: transparent;
+}
+
+.left-panel {
+    -fx-background-color: #f5f5f5;
+}
+
+/* --- Usage tiles pane --- */
+
+.usage-tiles-pane {
+    -fx-background-color: #1a1a2e;
+}
+
+/* --- Section labels --- */
+
+.section-label {
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}
+
+/* --- Donut legend --- */
+
+.legend-label {
+    -fx-font-size: 10px;
+}
+
+/* --- Detail pane --- */
+
+.detail-header {
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #ccc;
+    -fx-padding: 6 0 2 0;
+}
+
+.detail-key {
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #aaa;
+}
+
+.detail-value {
+    -fx-font-family: monospace;
+    -fx-font-size: 12px;
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+    -fx-padding: 0;
+    -fx-background-insets: 0;
+    -fx-border-width: 0;
+}
+
+.detail-placeholder {
+    -fx-font-size: 12px;
+    -fx-text-fill: #888;
+}
+
+/* --- Copy button --- */
+
+.copy-btn {
+    -fx-padding: 2;
+    -fx-background-color: transparent;
+    -fx-cursor: hand;
+}
+
+.copy-btn:pressed {
+    -fx-opacity: 0.5;
+}
+
+/* --- Session table status cell --- */
+
+.status-active    { -fx-text-fill: #4488ff; -fx-font-weight: bold; }
+.status-busy      { -fx-text-fill: #ff8844; -fx-font-weight: bold; }
+.status-idle      { -fx-text-fill: #44cc44; -fx-font-weight: bold; }
+.status-error     { -fx-text-fill: #ff4444; -fx-font-weight: bold; }
+.status-archived  { -fx-text-fill: #888888; -fx-font-weight: bold; }
+.status-corrupted { -fx-text-fill: #cc44cc; -fx-font-weight: bold; }
+
+/* --- Delete button --- */
+
+.delete-btn {
+    -fx-text-fill: red;
+}
+
+/* --- Placeholder label --- */
+
+.placeholder-label {
+    -fx-font-size: 12px;
+    -fx-text-fill: #888;
+}
+
+/* --- Event log window --- */
+
+.event-log-area {
+    -fx-font-family: monospace;
+    -fx-font-size: 12px;
+    -fx-control-inner-background: #1a1a2e;
+    -fx-text-fill: #cccccc;
+}
+
+.event-log-header {
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #aaa;
+}
+
+/* --- Prune panel --- */
+
+.prune-scan-btn {
+    -fx-font-weight: bold;
+}
+
+.prune-delete-btn {
+    -fx-text-fill: #cc3333;
+    -fx-font-weight: bold;
+}
+
+.prune-small-btn {
+    -fx-font-size: 11px;
+    -fx-padding: 2 6;
+}
+
+.prune-small-delete-btn {
+    -fx-font-size: 11px;
+    -fx-padding: 2 6;
+    -fx-text-fill: #cc3333;
+}
+
+.prune-mono-cell {
+    -fx-font-family: monospace;
+    -fx-font-size: 11px;
+}
+
+.prune-bold-cell {
+    -fx-font-weight: bold;
+}
+
+/* Category colors for prune panel */
+.prune-cat-empty     { -fx-text-fill: #ff6666; -fx-font-weight: bold; }
+.prune-cat-abandoned { -fx-text-fill: #ffaa44; -fx-font-weight: bold; }
+.prune-cat-trivial   { -fx-text-fill: #aaaaaa; }
+.prune-cat-corrupted { -fx-text-fill: #cc44cc; -fx-font-weight: bold; }
+
+/* --- About tab --- */
+
+.about-heading {
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+}
+
+/* --- Debug label (temporary) --- */
+
+.debug-label {
+    -fx-text-fill: black;
+    -fx-font-size: 11;
+}

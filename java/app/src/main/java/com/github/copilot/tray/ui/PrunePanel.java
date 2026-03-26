@@ -73,7 +73,7 @@ public class PrunePanel extends VBox {
         // Scan controls
         includeTrivialCb.setSelected(true);
         scanBtn.setOnAction(e -> runScan());
-        scanBtn.setStyle("-fx-font-weight: bold;");
+        scanBtn.getStyleClass().add("prune-scan-btn");
 
         spinner.setVisible(false);
         spinner.setPrefSize(20, 20);
@@ -115,7 +115,7 @@ public class PrunePanel extends VBox {
 
         // Delete button
         pruneBtn.setOnAction(e -> confirmAndPrune());
-        pruneBtn.setStyle("-fx-text-fill: #cc3333; -fx-font-weight: bold;");
+        pruneBtn.getStyleClass().add("prune-delete-btn");
         pruneBtn.setDisable(true);
 
         var bottomRow = new HBox(10, pruneBtn, statusLabel);
@@ -161,7 +161,7 @@ public class PrunePanel extends VBox {
                     }
                 }
             };
-            cell.setStyle("-fx-font-family: monospace; -fx-font-size: 11px;");
+            cell.getStyleClass().add("prune-mono-cell");
             return cell;
         });
 
@@ -173,16 +173,16 @@ public class PrunePanel extends VBox {
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
+                getStyleClass().removeIf(c -> c.startsWith("prune-cat-"));
                 if (empty || item == null) {
                     setText(null);
-                    setStyle("");
                 } else {
                     setText(item);
-                    setStyle(switch (PruneCategory.valueOf(item)) {
-                        case EMPTY -> "-fx-text-fill: #ff6666; -fx-font-weight: bold;";
-                        case ABANDONED -> "-fx-text-fill: #ffaa44; -fx-font-weight: bold;";
-                        case TRIVIAL -> "-fx-text-fill: #aaaaaa;";
-                        case CORRUPTED -> "-fx-text-fill: #cc44cc; -fx-font-weight: bold;";
+                    getStyleClass().add(switch (PruneCategory.valueOf(item)) {
+                        case EMPTY -> "prune-cat-empty";
+                        case ABANDONED -> "prune-cat-abandoned";
+                        case TRIVIAL -> "prune-cat-trivial";
+                        case CORRUPTED -> "prune-cat-corrupted";
                     });
                 }
             }
@@ -228,14 +228,14 @@ public class PrunePanel extends VBox {
             private final Button deleteBtn = new Button("Delete");
             private final HBox box = new HBox(4, resumeBtn, deleteBtn);
             {
-                resumeBtn.setStyle("-fx-font-size: 11px; -fx-padding: 2 6;");
+                resumeBtn.getStyleClass().add("prune-small-btn");
                 resumeBtn.setOnAction(e -> {
                     var item = getTableRow().getItem();
                     if (item != null) {
                         resumeHandler.accept(item.sessionId());
                     }
                 });
-                deleteBtn.setStyle("-fx-font-size: 11px; -fx-padding: 2 6; -fx-text-fill: #cc3333;");
+                deleteBtn.getStyleClass().add("prune-small-delete-btn");
                 deleteBtn.setOnAction(e -> {
                     var item = getTableRow().getItem();
                     if (item != null) {
@@ -294,22 +294,21 @@ public class PrunePanel extends VBox {
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
+                getStyleClass().removeIf(c -> c.startsWith("prune-"));
                 if (empty || item == null) {
                     setText(null);
                     setTooltip(null);
-                    setStyle("");
                 } else {
                     setText(item);
                     var ti = getIndex() >= 0 ? treeTable.getTreeItem(getIndex()) : null;
                     if (ti != null && ti.getValue() instanceof PruneCandidate pc) {
                         setTooltip(new Tooltip(pc.sessionId()));
-                        setStyle("-fx-font-family: monospace; -fx-font-size: 11px;");
+                        getStyleClass().add("prune-mono-cell");
                     } else if (ti != null && ti.getValue() instanceof String dir) {
                         setTooltip(new Tooltip(dir));
-                        setStyle("-fx-font-weight: bold;");
+                        getStyleClass().add("prune-bold-cell");
                     } else {
                         setTooltip(null);
-                        setStyle("");
                     }
                 }
             }
@@ -328,16 +327,16 @@ public class PrunePanel extends VBox {
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
+                getStyleClass().removeIf(c -> c.startsWith("prune-cat-"));
                 if (empty || item == null || item.isEmpty()) {
                     setText(null);
-                    setStyle("");
                 } else {
                     setText(item);
-                    setStyle(switch (PruneCategory.valueOf(item)) {
-                        case EMPTY -> "-fx-text-fill: #ff6666; -fx-font-weight: bold;";
-                        case ABANDONED -> "-fx-text-fill: #ffaa44; -fx-font-weight: bold;";
-                        case TRIVIAL -> "-fx-text-fill: #aaaaaa;";
-                        case CORRUPTED -> "-fx-text-fill: #cc44cc; -fx-font-weight: bold;";
+                    getStyleClass().add(switch (PruneCategory.valueOf(item)) {
+                        case EMPTY -> "prune-cat-empty";
+                        case ABANDONED -> "prune-cat-abandoned";
+                        case TRIVIAL -> "prune-cat-trivial";
+                        case CORRUPTED -> "prune-cat-corrupted";
                     });
                 }
             }
@@ -425,8 +424,8 @@ public class PrunePanel extends VBox {
             private final Button deleteBtn = new Button("Delete");
             private final HBox box = new HBox(4, resumeBtn, deleteBtn);
             {
-                resumeBtn.setStyle("-fx-font-size: 11px; -fx-padding: 2 6;");
-                deleteBtn.setStyle("-fx-font-size: 11px; -fx-padding: 2 6; -fx-text-fill: #cc3333;");
+                resumeBtn.getStyleClass().add("prune-small-btn");
+                deleteBtn.getStyleClass().add("prune-small-delete-btn");
                 box.setAlignment(Pos.CENTER);
             }
 

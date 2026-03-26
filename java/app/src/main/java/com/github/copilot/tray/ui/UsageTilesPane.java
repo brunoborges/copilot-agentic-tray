@@ -118,7 +118,7 @@ public class UsageTilesPane extends VBox {
                 sectionLabel("Context Breakdown"), breakdownRow);
 
         getChildren().add(tilesPane);
-        setStyle("-fx-background-color: #1a1a2e;");
+        getStyleClass().add("usage-tiles-pane");
         setPadding(new Insets(4));
     }
 
@@ -250,7 +250,7 @@ public class UsageTilesPane extends VBox {
         var swatch = new javafx.scene.shape.Circle(5, color);
         var label = new Label(name);
         label.setTextFill(Color.web("#cccccc"));
-        label.setStyle("-fx-font-size: 10px;");
+        label.getStyleClass().add("legend-label");
         var box = new HBox(4, swatch, label);
         box.setAlignment(Pos.CENTER_LEFT);
         return box;
@@ -265,7 +265,7 @@ public class UsageTilesPane extends VBox {
     private static Label sectionLabel(String text) {
         var label = new Label(text);
         label.setTextFill(Color.web("#aaaacc"));
-        label.setStyle("-fx-font-size: 13px; -fx-font-weight: bold;");
+        label.getStyleClass().add("section-label");
         label.setPadding(new Insets(4, 0, 0, 4));
         return label;
     }
