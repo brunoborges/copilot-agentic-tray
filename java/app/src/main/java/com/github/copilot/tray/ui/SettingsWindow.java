@@ -344,7 +344,7 @@ public class SettingsWindow {
                 logWindow.appendLog("ERROR: " + ex.getMessage());
             }
         });
-        openBrowserBtn = new Button("View Agent Session");
+        openBrowserBtn = new Button("Open Agent Session");
         openBrowserBtn.setDisable(true);
         openBrowserBtn.setOnAction(e -> {
             if (selectedSession != null && selectedSession.remote())
@@ -707,7 +707,8 @@ public class SettingsWindow {
         row = addDetailRow(row, "Name", session.name());
 
         if (session.remote()) {
-            row = addDetailRow(row, "Repository", session.workingDirectory(), true);
+            row = addDetailHyperlink(row, "Repository", session.workingDirectory(),
+                    "https://github.com/" + session.workingDirectory());
             row = addDetailRow(row, "State", session.status().name());
             if (session.user() != null)
                 row = addDetailRow(row, "User", session.user());
@@ -769,6 +770,23 @@ public class SettingsWindow {
 
     private int addDetailRow(int row, String label, String value) {
         return addDetailRow(row, label, value, false);
+    }
+
+    private int addDetailHyperlink(int row, String label, String text, String url) {
+        var keyLabel = new Label(label);
+        keyLabel.getStyleClass().add("detail-key");
+        keyLabel.setMinWidth(Region.USE_PREF_SIZE);
+
+        var link = new Hyperlink(text);
+        link.getStyleClass().add("detail-value");
+        link.setOnAction(e -> {
+            try { java.awt.Desktop.getDesktop().browse(java.net.URI.create(url)); }
+            catch (Exception ex) { LOG.warn("Failed to open URL: {}", ex.getMessage()); }
+        });
+
+        detailGrid.add(keyLabel, 0, row);
+        detailGrid.add(link, 1, row);
+        return row + 1;
     }
 
     private int addDetailRow(int row, String label, String value, boolean showCopy) {
