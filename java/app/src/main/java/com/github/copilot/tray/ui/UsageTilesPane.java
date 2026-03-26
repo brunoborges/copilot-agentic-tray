@@ -65,6 +65,7 @@ public class UsageTilesPane extends VBox {
                 .title("Tokens Used")
                 .chartData(systemToolsData, messagesData)
                 .animated(false)
+                .textSize(Tile.TextSize.SMALLER)
                 .build();
 
         contextGauge = TileBuilder.create()
@@ -77,6 +78,7 @@ public class UsageTilesPane extends VBox {
                 .barColor(COLOR_SYSTEM)
                 .thresholdColor(Tile.TileColor.RED.color)
                 .animated(false)
+                .textSize(Tile.TextSize.SMALLER)
                 .build();
 
         tokenCountTile = TileBuilder.create()
@@ -85,6 +87,7 @@ public class UsageTilesPane extends VBox {
                 .title("Tokens Used")
                 .description("of 0")
                 .value(0).decimals(0).animated(false)
+                .textSize(Tile.TextSize.SMALLER)
                 .build();
 
         systemToolsTile = buildBreakdownTile("System/Tools", COLOR_SYSTEM);
@@ -220,7 +223,9 @@ public class UsageTilesPane extends VBox {
                 .title(title).unit("%")
                 .maxValue(100).value(0)
                 .barColor(color)
-                .animated(false).build();
+                .animated(false)
+                .textSize(Tile.TextSize.SMALLER)
+                .build();
     }
 
     private Tile buildAggregateTile(String title) {
@@ -228,7 +233,9 @@ public class UsageTilesPane extends VBox {
                 .skinType(Tile.SkinType.NUMBER)
                 .prefSize(TILE_W, SMALL_H)
                 .title(title).value(0).decimals(0)
-                .animated(false).build();
+                .animated(false)
+                .textSize(Tile.TextSize.SMALLER)
+                .build();
     }
 
     private HBox buildDonutLegend() {

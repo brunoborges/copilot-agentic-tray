@@ -298,7 +298,7 @@ public class SettingsWindow {
                     });
         });
         var heightLabel = new Label("h: --");
-        heightLabel.setStyle("-fx-text-fill: yellow; -fx-font-size: 11;");
+        heightLabel.setStyle("-fx-text-fill: black; -fx-font-size: 11;");
         bottomPaneSplit.heightProperty().addListener((_, _, h) ->
                 heightLabel.setText("h: %.0f".formatted(h.doubleValue())));
         actionBar = new HBox(8, resumeBtn, attachBtn, renameBtn, deleteBtn, heightLabel);
