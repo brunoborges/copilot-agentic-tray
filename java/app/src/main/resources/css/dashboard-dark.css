@@ -344,6 +344,8 @@
 .hyperlink {
     -fx-text-fill: #4daafc;
     -fx-border-color: transparent;
+    -fx-underline: true;
+    -fx-cursor: hand;
 }
 
 .hyperlink:visited {
@@ -352,7 +354,6 @@
 
 .hyperlink:hover {
     -fx-text-fill: #74bfff;
-    -fx-underline: true;
 }
 
 /* --- Separator --- */
