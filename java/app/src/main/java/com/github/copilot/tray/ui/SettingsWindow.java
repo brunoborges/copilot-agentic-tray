@@ -204,6 +204,8 @@ public class SettingsWindow {
                     sessionTable.getSelectionModel().clearSelection();
                 }
             });
+            // Force CSS recomputation on selection change to fix text color caching
+            tableRow.selectedProperty().addListener((obs, was, is) -> tableRow.applyCss());
             return tableRow;
         });
         sessionTable.getSelectionModel().getSelectedItems()
