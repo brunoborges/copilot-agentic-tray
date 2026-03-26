@@ -163,10 +163,12 @@ public class SettingsWindow {
                     onDirectorySelected(selectedDirectory);
                     syncUsageTiles(List.of());
                 });
-        // Remove alternating row stripes
-        directoryList.setStyle("-fx-background-color: transparent;");
+        // Style: white background, dark text even when selected
+        directoryList.setStyle(
+                "-fx-background-color: white; -fx-background-insets: 0; -fx-padding: 0;");
 
         var leftBox = new VBox(toggleBar, directoryList);
+        leftBox.setStyle("-fx-background-color: white;");
         VBox.setVgrow(directoryList, Priority.ALWAYS);
 
         // --- Right top: session table ---
@@ -660,7 +662,8 @@ public class SettingsWindow {
         @Override protected void updateItem(String item, boolean empty) {
             super.updateItem(item, empty);
             if (empty || item == null) {
-                setText(null); setGraphic(null); setStyle("");
+                setText(null); setGraphic(null);
+                setStyle("-fx-background-color: transparent;");
                 return;
             }
             var dirPath = stripBadge(item);
@@ -670,7 +673,13 @@ public class SettingsWindow {
                     && getTreeItem() == tree.getSelectionModel().getSelectedItem();
             var icon = selected ? FOLDER_OPEN : FOLDER_CLOSED;
             setText(icon + " " + shortPath + badge);
-            setStyle("-fx-font-size: 12px; -fx-background-color: transparent;");
+            if (selected) {
+                setStyle("-fx-font-size: 12px; -fx-text-fill: #1a1a2e; "
+                        + "-fx-background-color: #d0e0f0;");
+            } else {
+                setStyle("-fx-font-size: 12px; -fx-text-fill: #333333; "
+                        + "-fx-background-color: transparent;");
+            }
             setTooltip(new Tooltip(dirPath));
         }
     }
