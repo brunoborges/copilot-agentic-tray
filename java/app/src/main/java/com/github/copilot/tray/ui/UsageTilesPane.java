@@ -89,9 +89,9 @@ public class UsageTilesPane extends VBox {
         messagesTokTile = buildBreakdownTile(COLOR_MSGS);
         availableTile   = buildBreakdownTile(COLOR_AVAILABLE);
 
-        totalSessionsTile = buildAggregateTile("Total Sessions");
-        activeSessionsTile = buildAggregateTile("Active Sessions");
-        totalTokensTile = buildAggregateTile("Total Tokens");
+        totalSessionsTile = buildAggregateTile();
+        activeSessionsTile = buildAggregateTile();
+        totalTokensTile = buildAggregateTile();
 
         // Layout — each tile gets a Label header + tile in a VBox
         var donutCol = new VBox(4, tileLabel("Tokens Used"), donutTile);
@@ -118,7 +118,16 @@ public class UsageTilesPane extends VBox {
         var breakdownRow = new HBox(6, sysToolsCol, messagesCol, availableCol);
         breakdownRow.setAlignment(Pos.CENTER_LEFT);
 
-        aggregateRow = new HBox(6, totalSessionsTile, activeSessionsTile, totalTokensTile);
+        var totalCol = new VBox(4, tileLabel("Total Sessions"), totalSessionsTile);
+        totalCol.setAlignment(Pos.CENTER_LEFT);
+
+        var activeCol = new VBox(4, tileLabel("Active Sessions"), activeSessionsTile);
+        activeCol.setAlignment(Pos.CENTER_LEFT);
+
+        var totalTokCol = new VBox(4, tileLabel("Total Tokens"), totalTokensTile);
+        totalTokCol.setAlignment(Pos.CENTER_LEFT);
+
+        aggregateRow = new HBox(6, totalCol, activeCol, totalTokCol);
         aggregateRow.setAlignment(Pos.CENTER_LEFT);
         aggregateRow.setPadding(new Insets(4, 0, 4, 0));
 
@@ -232,11 +241,11 @@ public class UsageTilesPane extends VBox {
                 .build();
     }
 
-    private Tile buildAggregateTile(String title) {
+    private Tile buildAggregateTile() {
         return TileBuilder.create()
                 .skinType(Tile.SkinType.NUMBER)
                 .prefSize(TILE_W, SMALL_H)
-                .title(title).value(0).decimals(0)
+                .value(0).decimals(0)
                 .animated(false)
                 .textSize(Tile.TextSize.SMALLER)
                 .build();

@@ -83,22 +83,18 @@ class SessionManagerTest {
 
     @Test
     void usageSnapshotBreakdown() {
-        // Simulates 90k/200k with 20% buffer
         var u = UsageSnapshot.fromSdk(90000, 200000, 25);
         assertEquals(90000, u.currentTokens());
         assertEquals(200000, u.tokenLimit());
         assertEquals(25, u.messagesCount());
-        // Buffer should be ~20% of limit
-        assertEquals(40000, u.bufferTokens());
         // System/tools ~30% of used, messages ~70% of used
         assertEquals(27000, u.systemToolsTokens());
         assertEquals(63000, u.messagesTokens());
-        // Free space = limit - used - buffer
-        assertEquals(70000, u.freeSpaceTokens());
+        // Available = limit - used
+        assertEquals(110000, u.availableTokens());
         // Percentages
         assertEquals(45.0, u.tokenUsagePercent(), 0.01);
-        assertEquals(35.0, u.freeSpacePercent(), 0.01);
-        assertEquals(20.0, u.bufferPercent(), 0.01);
+        assertEquals(55.0, u.availablePercent(), 0.01);
     }
 
     @Test
