@@ -98,8 +98,9 @@ public class TrayManager {
         menu.add(actionItem("Dashboard", e -> onOpenSettings.run()));
         menu.addSeparator();
 
-        // Group by directory, sorted by most recent activity
-        var byDir = sessions.stream()
+        // Group LOCAL sessions by directory
+        var localSessions = sessions.stream().filter(s -> !s.remote()).toList();
+        var byDir = localSessions.stream()
                 .collect(Collectors.groupingBy(SessionSnapshot::workingDirectory));
 
         // Sort directories: those with active sessions first, then by most recent activity
@@ -129,6 +130,31 @@ public class TrayManager {
             if (byDir.size() > DIR_LIMIT) {
                 menu.addSeparator();
                 menu.add(actionItem("View All Directories…", e -> onShowSessions.run()));
+            }
+        }
+
+        // Remote agent tasks section
+        var remoteSessions = sessions.stream()
+                .filter(SessionSnapshot::remote)
+                .sorted(Comparator.comparing(SessionSnapshot::lastActivityAt,
+                        Comparator.nullsLast(Comparator.reverseOrder())))
+                .limit(5)
+                .toList();
+        if (!remoteSessions.isEmpty()) {
+            menu.addSeparator();
+            menu.add(disabledItem("— Remote Agent Tasks —"));
+            for (var task : remoteSessions) {
+                var stateIcon = switch (task.status()) {
+                    case ACTIVE -> "🟢";
+                    case IDLE -> "🟡";
+                    case ERROR -> "🔴";
+                    default -> "⚪";
+                };
+                var label = stateIcon + " " + truncate(task.name(), 40);
+                if (task.workingDirectory() != null && !task.workingDirectory().isEmpty()) {
+                    label += " (" + task.workingDirectory() + ")";
+                }
+                menu.add(disabledItem(label));
             }
         }
 
@@ -301,5 +327,10 @@ public class TrayManager {
         if (n >= 1_000_000) return String.format("%.1fM", n / 1_000_000.0);
         if (n >= 1_000) return String.format("%.1fK", n / 1_000.0);
         return String.valueOf(n);
+    }
+
+    private static String truncate(String s, int maxLen) {
+        if (s == null) return "";
+        return s.length() <= maxLen ? s : s.substring(0, maxLen - 1) + "…";
     }
 }
