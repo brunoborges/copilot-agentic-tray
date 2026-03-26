@@ -8,7 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -205,9 +204,9 @@ public class GhCliRunner {
             @JsonProperty("state") String state,
             @JsonProperty("repository") String repository,
             @JsonProperty("user") String user,
-            @JsonProperty("createdAt") Instant createdAt,
-            @JsonProperty("updatedAt") Instant updatedAt,
-            @JsonProperty("completedAt") Instant completedAt,
+            @JsonProperty("createdAt") String createdAt,
+            @JsonProperty("updatedAt") String updatedAt,
+            @JsonProperty("completedAt") String completedAt,
             @JsonProperty("pullRequestNumber") Integer pullRequestNumber,
             @JsonProperty("pullRequestState") String pullRequestState,
             @JsonProperty("pullRequestTitle") String pullRequestTitle,

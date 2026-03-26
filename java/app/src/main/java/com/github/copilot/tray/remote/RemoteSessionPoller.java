@@ -7,6 +7,7 @@ import com.github.copilot.tray.session.UsageSnapshot;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -104,14 +105,16 @@ public class RemoteSessionPoller {
         var status = mapState(task.state());
         var repo = task.repository() != null ? task.repository() : "(no repository)";
         var name = task.name() != null ? task.name() : task.id();
+        var created = parseInstant(task.createdAt());
+        var updated = parseInstant(task.updatedAt());
 
         return new SessionSnapshot(
                 task.id(),
                 name,
                 status,
                 "remote-agent",
-                task.createdAt(),
-                task.updatedAt() != null ? task.updatedAt() : task.createdAt(),
+                created,
+                updated != null ? updated : created,
                 repo,
                 UsageSnapshot.EMPTY,
                 List.of(),
@@ -134,5 +137,15 @@ public class RemoteSessionPoller {
             case "timed_out", "failed", "error" -> SessionStatus.ERROR;
             default -> SessionStatus.ARCHIVED;
         };
+    }
+
+    private static Instant parseInstant(String value) {
+        if (value == null || value.isBlank()) return Instant.now();
+        try {
+            return Instant.parse(value);
+        } catch (Exception e) {
+            LOG.warn("Failed to parse instant: {}", value);
+            return Instant.now();
+        }
     }
 }
