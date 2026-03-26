@@ -36,7 +36,7 @@ public class TerminalLauncher {
      * in the given working directory.
      */
     public void newSession(String workingDirectory) {
-        var command = buildCommand("copilot --banner", null);
+        var command = buildCommand("copilot --banner", workingDirectory);
         LOG.info("Launching new terminal session in {}: {}", workingDirectory, command);
         launch(command, workingDirectory);
     }
