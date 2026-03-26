@@ -8,7 +8,6 @@ import eu.hansolo.tilesfx.chart.ChartData;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
-import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -22,11 +21,11 @@ import java.util.List;
  * Reusable pane showing usage tiles and donut chart for sessions.
  * Embeddable in any tab — call {@link #update} when selection changes.
  */
-public class UsageTilesPane extends ScrollPane {
+public class UsageTilesPane extends VBox {
 
-    private static final double TILE_W = 180;
-    private static final double TILE_H = 180;
-    private static final double SMALL_H = 130;
+    private static final double TILE_W = 150;
+    private static final double TILE_H = 150;
+    private static final double SMALL_H = 110;
 
     private static final Color COLOR_SYSTEM = Color.web("#7b8cde");
     private static final Color COLOR_MSGS   = Color.web("#c0c0c0");
@@ -115,9 +114,9 @@ public class UsageTilesPane extends ScrollPane {
                 sectionLabel("Selected Session(s)"), detailRow,
                 sectionLabel("Context Breakdown"), breakdownRow);
 
-        setContent(tilesPane);
-        setFitToWidth(true);
-        setStyle("-fx-background: #1a1a2e; -fx-background-color: #1a1a2e;");
+        getChildren().add(tilesPane);
+        setStyle("-fx-background-color: #1a1a2e;");
+        setPadding(new Insets(4));
     }
 
     /** Returns the aggregate row node for embedding outside this pane. */

@@ -217,9 +217,9 @@ public class SettingsWindow {
         // Detail (left 30%) + Usage (right 70%) side by side
         var bottomPaneSplit = new SplitPane(detailScroll, usageTilesPane);
         bottomPaneSplit.setDividerPositions(0.30);
-        bottomPaneSplit.setPrefHeight(250);
-        bottomPaneSplit.setMinHeight(200);
-        bottomPaneSplit.setMaxHeight(300);
+        bottomPaneSplit.setPrefHeight(300);
+        bottomPaneSplit.setMinHeight(250);
+        bottomPaneSplit.setMaxHeight(400);
 
         resumeBtn = new Button("Resume in Terminal");
         resumeBtn.setDisable(true);
