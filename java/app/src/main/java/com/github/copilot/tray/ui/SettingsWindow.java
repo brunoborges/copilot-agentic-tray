@@ -339,7 +339,7 @@ public class SettingsWindow {
                 logWindow.appendLog("ERROR: " + ex.getMessage());
             }
         });
-        openBrowserBtn = new Button("Open in Browser");
+        openBrowserBtn = new Button("View Agent Session");
         openBrowserBtn.setDisable(true);
         openBrowserBtn.setOnAction(e -> {
             if (selectedSession != null && selectedSession.remote())
