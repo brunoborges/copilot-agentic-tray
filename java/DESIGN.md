@@ -163,3 +163,33 @@ All tables follow these conventions:
 - When deleting from **any** view, call `sessionManager.removeSession()` so all listeners refresh.
 - **PrunePanel** resets `hasScanned` on SessionManager changes → auto-rescans on next tab visit.
 - **SettingsWindow** refreshes table via `onSessionChange()` callback.
+
+## Window Management
+
+All popup/viewer windows must follow these conventions:
+
+### Keyboard Shortcuts
+
+- **Cmd+W** (macOS) / **Ctrl+W** (Windows/Linux) must close every window. Use `SHORTCUT_DOWN` modifier:
+  ```java
+  scene.getAccelerators().put(
+      new KeyCodeCombination(KeyCode.W, KeyCombination.SHORTCUT_DOWN),
+      () -> stage.close());
+  ```
+- **Alt+F4** is handled natively by JavaFX on all platforms — no code needed.
+
+### Singleton Windows
+
+Never open duplicate windows for the same session. Each viewer class maintains a `static Map<String, Viewer> OPEN_VIEWERS`:
+
+- **Open**: check the map first → if found, `show()` + `toFront()` and return. Otherwise, create, register, and show.
+- **Close**: register `stage.setOnHidden(e -> OPEN_VIEWERS.remove(key))` to clean up the map.
+- Callers use a `static showViewer(...)` factory method instead of `new Viewer(...).show()`.
+
+| Window | Singleton Key | Close shortcut |
+|---|---|---|
+| `SettingsWindow` | single instance (field `stage`) | Cmd+W hides |
+| `SessionEventsViewer` | `sessionId` | Cmd+W closes |
+| `SessionCheckpointViewer` | `sessionId` | Cmd+W closes |
+| `SessionEventLogWindow` | per-instance (attach-specific) | Cmd+W closes |
+| `PrunePanel` category popup | `categoryStage` field | Cmd+W closes |

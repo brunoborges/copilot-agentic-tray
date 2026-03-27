@@ -486,9 +486,8 @@ public class SettingsWindow {
         viewEventsBtn.setDisable(true);
         viewEventsBtn.setOnAction(e -> {
             if (selectedSession == null) return;
-            var viewer = new SessionEventsViewer(selectedSession.id(), selectedSession.name(),
+            SessionEventsViewer.showViewer(selectedSession.id(), selectedSession.name(),
                     themeManager, stage);
-            viewer.show();
         });
 
         compactBtn = new Button("Compact");
@@ -525,8 +524,8 @@ public class SettingsWindow {
         viewCheckpointsBtn.setDisable(true);
         viewCheckpointsBtn.setOnAction(e -> {
             if (selectedSession == null) return;
-            new SessionCheckpointViewer(selectedSession.id(), selectedSession.name(),
-                    themeManager, stage).show();
+            SessionCheckpointViewer.showViewer(selectedSession.id(), selectedSession.name(),
+                    themeManager, stage);
         });
 
         actionBar = new HBox(8, newSessionBtn, resumeBtn, attachBtn, viewEventsBtn, viewCheckpointsBtn, compactBtn, renameBtn, deleteBtn, deleteProgress,
@@ -704,15 +703,15 @@ public class SettingsWindow {
                 viewEventsItem.setOnAction(e -> {
                     var item = getTableRow().getItem();
                     if (item != null) {
-                        new SessionEventsViewer(item.id(), item.name(),
-                                themeManager, stage).show();
+                        SessionEventsViewer.showViewer(item.id(), item.name(),
+                                themeManager, stage);
                     }
                 });
                 viewCheckpointsItem.setOnAction(e -> {
                     var item = getTableRow().getItem();
                     if (item != null) {
-                        new SessionCheckpointViewer(item.id(), item.name(),
-                                themeManager, stage).show();
+                        SessionCheckpointViewer.showViewer(item.id(), item.name(),
+                                themeManager, stage);
                     }
                 });
                 compactItem.setOnAction(e -> {

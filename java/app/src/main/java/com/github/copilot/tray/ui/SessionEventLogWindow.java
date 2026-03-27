@@ -57,6 +57,12 @@ public class SessionEventLogWindow {
             themeManager.register(scene);
         }
         stage.setScene(scene);
+        // Cmd+W / Ctrl+W to close
+        scene.getAccelerators().put(
+                new javafx.scene.input.KeyCodeCombination(
+                        javafx.scene.input.KeyCode.W,
+                        javafx.scene.input.KeyCombination.SHORTCUT_DOWN),
+                () -> stage.close());
         stage.setOnCloseRequest(e -> {
             appendLog("— Detaching from session —");
             onClose.run();

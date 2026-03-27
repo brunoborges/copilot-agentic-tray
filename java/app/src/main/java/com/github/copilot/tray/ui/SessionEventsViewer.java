@@ -36,6 +36,8 @@ public class SessionEventsViewer {
     private static final Path SESSION_STORE = Path.of(
             System.getProperty("user.home"), ".copilot", "session-state");
 
+    private static final java.util.Map<String, SessionEventsViewer> OPEN_VIEWERS = new java.util.concurrent.ConcurrentHashMap<>();
+
     private final Stage stage;
     private final javafx.beans.property.SimpleStringProperty searchTerm =
             new javafx.beans.property.SimpleStringProperty("");
@@ -116,6 +118,7 @@ public class SessionEventsViewer {
                         javafx.scene.input.KeyCode.W,
                         javafx.scene.input.KeyCombination.SHORTCUT_DOWN),
                 () -> stage.close());
+        stage.setOnHidden(e -> OPEN_VIEWERS.remove(sessionId));
         stage.setScene(scene);
 
         // Load events in background
@@ -213,6 +216,21 @@ public class SessionEventsViewer {
                 });
             });
         });
+    }
+
+    /** Show or refocus an existing viewer for the given session. */
+    public static void showViewer(String sessionId, String sessionName,
+                                  ThemeManager themeManager, Stage owner) {
+        var existing = OPEN_VIEWERS.get(sessionId);
+        if (existing != null) {
+            existing.stage.show();
+            existing.stage.toFront();
+            return;
+        }
+        var viewer = new SessionEventsViewer(sessionId, sessionName, themeManager, owner);
+        OPEN_VIEWERS.put(sessionId, viewer);
+        viewer.stage.show();
+        viewer.stage.toFront();
     }
 
     public void show() {
