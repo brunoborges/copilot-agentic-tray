@@ -40,13 +40,18 @@
     -fx-background-color: #1e1e2e;
 }
 
+.scroll-bar .track {
+    -fx-background-color: #2a2a3e;
+    -fx-background-radius: 4;
+}
+
 .scroll-bar .thumb {
-    -fx-background-color: #4a4a5e55;
+    -fx-background-color: #5a5a7e;
     -fx-background-radius: 4;
 }
 
 .scroll-bar .thumb:hover {
-    -fx-background-color: #5a5a6eaa;
+    -fx-background-color: #7a7a9e;
 }
 
 .scroll-bar .increment-button, .scroll-bar .decrement-button {
