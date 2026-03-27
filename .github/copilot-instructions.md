@@ -74,25 +74,25 @@ OS is detected via `System.getProperty("os.name", "").toLowerCase()`. Each platf
 Shell paths passed into commands are always escaped via `escapeShell()` (single-quote wrapping with internal `'` escaped as `'\''`).
 
 ### UI Design System
-Follow the card-based design system documented in [`java/DESIGN.md`](../java/DESIGN.md). All content sections (detail panes, settings forms, about panels) use rounded-corner cards with consistent spacing, key-value GridPane layouts, and the established color palette. Use the `aboutCard()`, `aboutGrid()`, and `aboutRow()` helpers when building new UI sections.
+**Before making any UI changes, read [`java/DESIGN.md`](../java/DESIGN.md) in full.** It is the authoritative reference for all visual decisions — design tokens, color palette, CSS classes, component patterns, page layouts, window management, and the new-UI checklist. Do not guess at spacing, colors, or layout conventions; they are all specified there.
+
+Key points summarized here for quick reference:
 
 ### CSS-Driven Spacing
 All padding and spacing must use CSS classes — never inline `setPadding()` for layout-level spacing.
 
 | Class | Purpose |
 |---|---|
-| `.content-padding` | 20px all sides — used on every page's top-level content container |
+| `.content-padding` | 20px all sides — every page's top-level content container |
 | `.sessions-section` | 20px all sides — rightBox in Sessions page |
-| `.sessions-card` | 8px padding, 8px border-radius, border, shadow — card wrapper for tables, tiles, action bars |
-| `.sessions-detail-pane` | 0px padding, 8px spacing — detail pane (cards provide their own padding) |
+| `.sessions-card` | 8px padding, 8px border-radius, border, shadow — card wrapper |
+| `.sessions-detail-pane` | 0px padding, 8px spacing — detail pane |
 | `.about-card` | Detail card container with background, border, radius |
-
-Gap (`-fx-spacing`) = space between children. Padding (`-fx-padding`) = space between container edge and children.
 
 ### Window Management
 - **Cmd+W / Ctrl+W** must close every popup window (use `SHORTCUT_DOWN` modifier via scene accelerators).
-- **Singleton windows**: viewer windows (Events, Checkpoints) use a `static Map<String, Viewer> OPEN_VIEWERS` to prevent duplicates per session. Callers use `static showViewer(...)` factory methods.
-- **Cleanup**: register `stage.setOnHidden(e -> OPEN_VIEWERS.remove(key))` to clean up the map.
+- **Singleton windows**: viewer windows use a `static Map<String, Viewer> OPEN_VIEWERS` to prevent duplicates. Callers use `static showViewer(...)` factory methods.
+- **Cleanup**: register `stage.setOnHidden(e -> OPEN_VIEWERS.remove(key))`.
 
 ### Cross-View Sync
 - **SessionManager** is the single source of truth. All mutations trigger `notifyListeners()`.
