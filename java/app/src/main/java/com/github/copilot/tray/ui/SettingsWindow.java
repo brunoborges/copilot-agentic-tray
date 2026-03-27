@@ -742,6 +742,8 @@ public class SettingsWindow {
             detailPane.setMinHeight(Region.USE_COMPUTED_SIZE);
             detailPane.setMaxHeight(Double.MAX_VALUE);
 
+            // Re-add detailPane to bottomPane (Remote mode moves it to rightBox directly)
+            bottomPane.getChildren().setAll(detailPane, usageTilesPane);
             bottomPane.setPrefHeight(375);
             bottomPane.setMinHeight(375);
             bottomPane.setMaxHeight(375);
