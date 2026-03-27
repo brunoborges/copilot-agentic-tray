@@ -323,7 +323,7 @@ public class SettingsWindow {
         // --- Right bottom: detail + actions ---
         var placeholderLabel = new Label("Select a session to view details.");
         placeholderLabel.getStyleClass().add("placeholder-label");
-        detailPane = new VBox(12, placeholderLabel);
+        detailPane = new VBox(placeholderLabel);
         detailPane.getStyleClass().add("sessions-detail-pane");
 
         // Usage tiles pane (local only)
@@ -495,7 +495,7 @@ public class SettingsWindow {
         actionBar = new HBox(8, newSessionBtn, resumeBtn, attachBtn, viewEventsBtn, renameBtn, deleteBtn, deleteProgress,
                 openRepoBtn, openPrBtn, openBrowserBtn, viewLogsBtn);
         actionBar.setAlignment(Pos.CENTER_LEFT);
-        actionBar.getStyleClass().addAll("action-bar", "sessions-card");
+        actionBar.getStyleClass().add("action-bar");
 
         // Wrap session table in a rounded card
         tableCard = new VBox(sessionTable);
@@ -512,7 +512,6 @@ public class SettingsWindow {
 
         // Top: aggregate tiles + session table card (grows to fill)
         topPane = new VBox(8, usageTilesPane.getAggregateRow(), tableCard);
-        topPane.getStyleClass().add("sessions-section");
         topPane.setMinHeight(200);
         VBox.setVgrow(topPane, Priority.ALWAYS);
 
@@ -520,11 +519,10 @@ public class SettingsWindow {
         bottomPane.setPrefHeight(375);
         bottomPane.setMinHeight(375);
         bottomPane.setMaxHeight(375);
-        bottomPane.getStyleClass().add("sessions-section");
 
         // Right side: table on top, detail below, action bar pinned at bottom
         rightBox = new VBox(8, topPane, bottomPane, actionBar);
-        rightBox.setPadding(new Insets(8, 0, 8, 0));
+        rightBox.getStyleClass().add("sessions-section");
 
         var split = new SplitPane(leftBox, rightBox);
         split.setDividerPositions(0.20);
