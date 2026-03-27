@@ -162,7 +162,7 @@ public class UsageTilesPane extends VBox {
                 contextBreakdownLabel, breakdownRow);
 
         getChildren().add(tilesPane);
-        getStyleClass().add("usage-tiles-pane");
+        getStyleClass().addAll("usage-tiles-pane", "sessions-card");
     }
 
     /** Returns the aggregate row node for embedding outside this pane. */

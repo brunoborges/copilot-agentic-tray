@@ -334,12 +334,7 @@ public class SettingsWindow {
         // Detail (left, grows) + Usage tiles (right, fixed width) side by side — local mode
         HBox.setHgrow(detailPane, Priority.ALWAYS);
 
-        var tilesCard = new VBox(usageTilesPane);
-        tilesCard.getStyleClass().add("sessions-card");
-        tilesCard.setMinWidth(480);
-        tilesCard.setMaxWidth(480);
-
-        bottomPane = new HBox(8, detailPane, tilesCard);
+        bottomPane = new HBox(8, detailPane, usageTilesPane);
 
         newSessionBtn = new Button("New Session");
         newSessionBtn.setOnAction(e -> {
