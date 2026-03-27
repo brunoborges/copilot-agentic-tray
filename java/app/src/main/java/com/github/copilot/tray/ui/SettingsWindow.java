@@ -501,6 +501,7 @@ public class SettingsWindow {
         actionBar.getStyleClass().add("action-bar");
 
         var actionPane = new VBox(4, actionBar, deleteProgress);
+        actionPane.getStyleClass().add("sessions-card");
 
         // Wrap session table in a rounded card
         tableCard = new VBox(sessionTable);
@@ -528,7 +529,6 @@ public class SettingsWindow {
         bottomPane.getStyleClass().add("sessions-section");
 
         // Right side: table on top, detail below, action bar pinned at bottom
-        actionPane.getStyleClass().add("sessions-section");
         rightBox = new VBox(8, topPane, bottomPane, actionPane);
         rightBox.setPadding(new Insets(8, 0, 8, 0));
 
