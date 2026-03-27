@@ -5,6 +5,7 @@ import com.github.copilot.tray.config.ConfigStore;
 import com.github.copilot.tray.remote.GhCliRunner;
 import com.github.copilot.tray.remote.RemoteSessionPoller;
 import com.github.copilot.tray.sdk.SdkBridge;
+import com.github.copilot.tray.session.GitInfo;
 import com.github.copilot.tray.session.SessionDiskReader;
 import com.github.copilot.tray.session.SessionManager;
 import com.github.copilot.tray.session.SessionSnapshot;
@@ -898,6 +899,21 @@ public class SettingsWindow {
             aboutRow(infoGrid, row, "Last Active", DATE_FMT.format(session.lastActivityAt()));
 
         cards.add(aboutCard("Session", infoGrid));
+
+        // --- Repository card (local git repos) ---
+        if (!session.remote()) {
+            GitInfo.from(session.workingDirectory()).ifPresent(git -> {
+                var repoGrid = aboutGrid();
+                int r = 0;
+                if (git.branch() != null)
+                    aboutRow(repoGrid, r++, "Branch", git.branch());
+                if (git.remoteUrl() != null)
+                    aboutRow(repoGrid, r++, "Remote", detailValueField(git.remoteUrl(), true));
+                if (git.githubUrl() != null)
+                    addDetailHyperlinkToGrid(repoGrid, r++, "GitHub", git.githubUrl(), git.githubUrl());
+                cards.add(aboutCard("Repository", repoGrid));
+            });
+        }
 
         // --- Pull Request card (remote only) ---
         if (session.remote() && session.pullRequestNumber() != null) {
