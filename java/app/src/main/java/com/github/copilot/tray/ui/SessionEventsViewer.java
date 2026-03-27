@@ -43,7 +43,12 @@ public class SessionEventsViewer {
     public SessionEventsViewer(String sessionId, String sessionName,
                                ThemeManager themeManager, Stage owner) {
         var listView = new ListView<ParsedEvent>();
-        listView.setCellFactory(lv -> new EventCell());
+        listView.setCellFactory(lv -> {
+            var cell = new EventCell();
+            cell.setCache(true);
+            cell.setCacheHint(javafx.scene.CacheHint.SPEED);
+            return cell;
+        });
         listView.getStyleClass().add("events-viewer-list");
         // Refresh cells when search term changes
         searchTerm.addListener((obs, old, val) -> listView.refresh());

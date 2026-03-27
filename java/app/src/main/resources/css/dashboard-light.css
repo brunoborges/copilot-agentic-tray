@@ -797,6 +797,30 @@
     -fx-background-color: transparent;
     -fx-border-color: transparent;
 }
+.events-viewer-list .scroll-bar:vertical {
+    -fx-background-color: transparent;
+    -fx-pref-width: 10;
+}
+.events-viewer-list .scroll-bar:vertical .track {
+    -fx-background-color: transparent;
+}
+.events-viewer-list .scroll-bar:vertical .thumb {
+    -fx-background-color: #b0b0c0;
+    -fx-background-radius: 5;
+}
+.events-viewer-list .scroll-bar:vertical .thumb:hover {
+    -fx-background-color: #9090a0;
+}
+.events-viewer-list .scroll-bar:vertical .increment-button,
+.events-viewer-list .scroll-bar:vertical .decrement-button {
+    -fx-pref-height: 0;
+    -fx-max-height: 0;
+}
+.events-viewer-list .scroll-bar:vertical .increment-arrow,
+.events-viewer-list .scroll-bar:vertical .decrement-arrow {
+    -fx-shape: "";
+    -fx-padding: 0;
+}
 .events-viewer-list .list-cell {
     -fx-background-color: transparent;
     -fx-padding: 2 0;
