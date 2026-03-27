@@ -1270,7 +1270,7 @@ public class SettingsWindow {
         saveButton.setOnAction(e -> saveSettings());
 
         var content = new VBox(12, appearanceCard, cliCard, pollingCard, behaviorCard, saveButton);
-        content.setPadding(new Insets(20));
+        content.getStyleClass().add("content-padding");
 
         var scrollPane = new ScrollPane(content);
         scrollPane.setFitToWidth(true);
@@ -1397,7 +1397,7 @@ public class SettingsWindow {
 
         // --- Layout ---
         var content = new VBox(12, heroBox, buildCard, runtimeCard, cliCard, linksCard);
-        content.setPadding(new Insets(20));
+        content.getStyleClass().add("content-padding");
 
         var scrollPane = new ScrollPane(content);
         scrollPane.setFitToWidth(true);

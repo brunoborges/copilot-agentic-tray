@@ -78,7 +78,7 @@ public class PrunePanel extends VBox {
         this.sessionManager = sessionManager;
 
         setSpacing(10);
-        setPadding(new Insets(12));
+        getStyleClass().add("content-padding");
 
         // Scan controls
         includeTrivialCb.setSelected(true);
