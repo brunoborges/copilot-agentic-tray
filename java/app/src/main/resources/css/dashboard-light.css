@@ -1080,3 +1080,114 @@
 .prune-card-link:hover {
     -fx-text-fill: #3a5ca8;
 }
+
+/* ── Checkpoint viewer ─────────────────────────────────────────── */
+
+.checkpoint-list {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+.checkpoint-list .list-cell {
+    -fx-background-color: transparent;
+    -fx-padding: 6 8;
+    -fx-border-color: transparent transparent #e0e0e0 transparent;
+}
+.checkpoint-list .list-cell:selected {
+    -fx-background-color: #d0e0ff;
+    -fx-background-radius: 4;
+}
+.checkpoint-list-number {
+    -fx-font-weight: bold;
+    -fx-text-fill: #0066cc;
+    -fx-font-size: 12px;
+}
+.checkpoint-list-title {
+    -fx-text-fill: #333;
+    -fx-font-size: 12px;
+}
+
+.checkpoint-scroll {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+}
+.checkpoint-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+.checkpoint-section-card {
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+}
+.checkpoint-section-header {
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+    -fx-text-fill: #1a1a1a;
+}
+.checkpoint-content-text {
+    -fx-text-fill: #333;
+    -fx-font-size: 12px;
+}
+
+/* Overview — blue */
+.checkpoint-section-overview {
+    -fx-background-color: #dceeff;
+    -fx-border-color: #b0d4ff;
+}
+
+/* History — neutral light */
+.checkpoint-section-history {
+    -fx-background-color: #f0f0f5;
+    -fx-border-color: #d0d0dd;
+}
+
+/* Work Done — green */
+.checkpoint-section-work-done {
+    -fx-background-color: #e0f5e0;
+    -fx-border-color: #b0d8b0;
+}
+
+/* Technical Details — purple */
+.checkpoint-section-technical {
+    -fx-background-color: #ede0f8;
+    -fx-border-color: #c8b0e0;
+}
+
+/* Important Files — warm */
+.checkpoint-section-files {
+    -fx-background-color: #f5efe8;
+    -fx-border-color: #d8c8b0;
+}
+
+/* Next Steps — amber */
+.checkpoint-section-next-steps {
+    -fx-background-color: #f5f5e0;
+    -fx-border-color: #d8d8a0;
+}
+
+.checkpoint-file-entry {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 6;
+    -fx-border-color: #d0c8b8;
+    -fx-border-radius: 6;
+}
+.checkpoint-file-path {
+    -fx-font-family: "Monospace";
+    -fx-font-size: 12px;
+    -fx-text-fill: #0055aa;
+    -fx-font-weight: bold;
+}
+.checkpoint-file-desc {
+    -fx-text-fill: #555;
+    -fx-font-size: 11px;
+}
+.checkpoint-file-copy {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 0 4;
+    -fx-font-size: 11px;
+    -fx-cursor: hand;
+}
+.checkpoint-file-copy:hover {
+    -fx-background-color: #e0e0e8;
+    -fx-background-radius: 4;
+}
