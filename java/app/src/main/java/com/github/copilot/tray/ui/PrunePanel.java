@@ -519,9 +519,8 @@ public class PrunePanel extends VBox {
         }
 
         long totalSize = selected.stream().mapToLong(PruneCandidate::diskSizeBytes).sum();
-        var msg = "This will permanently delete " + selected.size()
-                + " session(s) and free approximately " + formatSize(totalSize)
-                + " of disk space.\n\nThis action cannot be undone.";
+        var msg = "Delete " + selected.size() + " selected sessions?\n\nThis will free approximately "
+                + formatSize(totalSize) + " of disk space.\n\nThis action cannot be undone.";
         if (DeleteConfirmDialog.confirm(msg, getScene() != null ? getScene().getWindow() : null, themeManager)) {
             executePrune(selected);
         }
