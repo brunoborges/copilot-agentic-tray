@@ -154,37 +154,31 @@ public class SessionEventsViewer {
                     var query = searchField.getText().trim().toLowerCase();
                     searchMatches.clear();
                     searchIdx[0] = -1;
+                    searchTerm.set(query);
                     if (query.isEmpty()) {
-                        searchTerm.set("");
                         searchStatus.setText("");
                         prevSearchBtn.setDisable(true);
                         nextSearchBtn.setDisable(true);
                         return;
                     }
-                    var items = listView.getItems();
-                    for (int i = 0; i < items.size(); i++) {
-                        var ev = items.get(i);
+                    for (int i = 0; i < events.size(); i++) {
+                        var ev = events.get(i);
                         if (ev.content().toLowerCase().contains(query)
                                 || ev.type().toLowerCase().contains(query)) {
                             searchMatches.add(i);
                         }
                     }
-                    // Set search term after building matches — triggers cell refresh
-                    searchTerm.set(query);
                     if (searchMatches.isEmpty()) {
                         searchStatus.setText("No matches");
                         prevSearchBtn.setDisable(true);
                         nextSearchBtn.setDisable(true);
                     } else {
                         searchIdx[0] = 0;
+                        listView.scrollTo(searchMatches.get(0));
+                        listView.getSelectionModel().select(searchMatches.get(0));
                         searchStatus.setText("1 / " + searchMatches.size());
                         prevSearchBtn.setDisable(false);
                         nextSearchBtn.setDisable(false);
-                        // Scroll after refresh settles
-                        Platform.runLater(() -> {
-                            listView.scrollTo(searchMatches.get(0));
-                            listView.getSelectionModel().select(searchMatches.get(0));
-                        });
                     }
                 };
 
@@ -193,19 +187,17 @@ public class SessionEventsViewer {
                 nextSearchBtn.setOnAction(e -> {
                     if (searchMatches.isEmpty()) return;
                     searchIdx[0] = (searchIdx[0] + 1) % searchMatches.size();
-                    int target = searchMatches.get(searchIdx[0]);
+                    listView.scrollTo(searchMatches.get(searchIdx[0]));
+                    listView.getSelectionModel().select(searchMatches.get(searchIdx[0]));
                     searchStatus.setText((searchIdx[0] + 1) + " / " + searchMatches.size());
-                    listView.getSelectionModel().select(target);
-                    listView.scrollTo(target);
                 });
 
                 prevSearchBtn.setOnAction(e -> {
                     if (searchMatches.isEmpty()) return;
                     searchIdx[0] = (searchIdx[0] - 1 + searchMatches.size()) % searchMatches.size();
-                    int target = searchMatches.get(searchIdx[0]);
+                    listView.scrollTo(searchMatches.get(searchIdx[0]));
+                    listView.getSelectionModel().select(searchMatches.get(searchIdx[0]));
                     searchStatus.setText((searchIdx[0] + 1) + " / " + searchMatches.size());
-                    listView.getSelectionModel().select(target);
-                    listView.scrollTo(target);
                 });
             });
         });
