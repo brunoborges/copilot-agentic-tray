@@ -163,7 +163,6 @@ public class UsageTilesPane extends VBox {
 
         getChildren().add(tilesPane);
         getStyleClass().add("usage-tiles-pane");
-        setPadding(new Insets(16));
     }
 
     /** Returns the aggregate row node for embedding outside this pane. */

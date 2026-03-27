@@ -324,7 +324,7 @@ public class SettingsWindow {
         var placeholderLabel = new Label("Select a session to view details.");
         placeholderLabel.getStyleClass().add("placeholder-label");
         detailPane = new VBox(12, placeholderLabel);
-        detailPane.setPadding(new Insets(16));
+        detailPane.getStyleClass().add("sessions-detail-pane");
 
         // Usage tiles pane (local only)
         usageTilesPane = new UsageTilesPane();
@@ -505,7 +505,6 @@ public class SettingsWindow {
         // Wrap session table in a rounded card
         tableCard = new VBox(sessionTable);
         tableCard.getStyleClass().add("sessions-card");
-        tableCard.setPadding(new Insets(2));
         // Clip content to rounded corners
         var clip = new javafx.scene.shape.Rectangle();
         clip.setArcWidth(16);
@@ -518,7 +517,7 @@ public class SettingsWindow {
 
         // Top: aggregate tiles + session table card (grows to fill)
         topPane = new VBox(8, usageTilesPane.getAggregateRow(), tableCard);
-        topPane.setPadding(new Insets(0, 12, 0, 12));
+        topPane.getStyleClass().add("sessions-section");
         topPane.setMinHeight(200);
         VBox.setVgrow(topPane, Priority.ALWAYS);
 
@@ -526,7 +525,7 @@ public class SettingsWindow {
         bottomPane.setPrefHeight(375);
         bottomPane.setMinHeight(375);
         bottomPane.setMaxHeight(375);
-        bottomPane.setPadding(new Insets(0, 12, 0, 12));
+        bottomPane.getStyleClass().add("sessions-section");
 
         // Right side: table on top, detail below, action bar pinned at bottom
         rightBox = new VBox(topPane, bottomPane, actionPane);

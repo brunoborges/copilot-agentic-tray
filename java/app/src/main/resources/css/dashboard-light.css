@@ -145,7 +145,16 @@
     -fx-border-color: #d0d0d8;
     -fx-border-radius: 8;
     -fx-border-width: 1;
+    -fx-padding: 2;
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 6, 0, 0, 2);
+}
+
+.sessions-section {
+    -fx-padding: 0 12 0 12;
+}
+
+.sessions-detail-pane {
+    -fx-padding: 16;
 }
 
 .sessions-card-table {
@@ -607,7 +616,7 @@
 
 .usage-tiles-pane {
     -fx-background-color: #1a1a2e;
-    -fx-padding: 6;
+    -fx-padding: 16;
 }
 
 /* --- Section labels --- */
