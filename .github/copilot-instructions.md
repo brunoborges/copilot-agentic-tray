@@ -2,23 +2,23 @@
 
 ## Build, Test & Run
 
-All commands run from the `java/` directory.
+All commands run from the `java/` directory. Always use `./mvnw` (Maven wrapper) instead of `mvn`.
 
 ```bash
-# Build and run tests
-mvn clean verify
+# Build and run tests (ALWAYS do this, not just compile)
+./mvnw clean verify
 
 # Run locally (recommended for development)
-mvn javafx:run -pl app
+./mvnw javafx:run -pl app
 
 # Run tests only
-mvn test
+./mvnw test
 
 # Run a single test class
-mvn test -pl app -Dtest=SessionManagerTest
+./mvnw test -pl app -Dtest=SessionManagerTest
 
 # Build without tests (produces JAR + deps in app/target/mods/)
-mvn clean package -pl app -DskipTests
+./mvnw clean package -pl app -DskipTests
 ```
 
 CI runs `mvn -B clean verify` from `java/` across a matrix of macOS, Linux, and Windows (x86_64 + arm64).
@@ -38,9 +38,9 @@ System Tray (AWT)  ←→  TrayManager  ←→  SessionManager  ←→  SdkBridg
 - **`SessionManager`** — single source of truth for session state; thread-safe; all mutations go through it
 - **`SdkBridge`** — wraps `CopilotClient` from `copilot-sdk-java`; polls session list, attaches event listeners per session
 - **`EventRouter`** — translates raw SDK events into `SessionManager` mutations using pattern-matching `switch`
-- **`SessionDiskReader`** — reads `~/.copilot/session-state/` directly for sessions the SDK doesn't expose (token accuracy, offline access)
+- **`SessionDiskReader`** — reads `~/.copilot/session-state/` directly for sessions the SDK doesn't expose (token accuracy, offline access, checkpoints)
 - **`TrayManager`** — owns AWT `SystemTray` and rebuilds the `PopupMenu` dynamically from `SessionManager` state
-- **`SettingsWindow`** — JavaFX window (single instance, shown/hidden); opened from tray menu
+- **`SettingsWindow`** — JavaFX dashboard window (single instance, shown/hidden); opened from tray menu
 
 ## Key Conventions
 
@@ -75,3 +75,26 @@ Shell paths passed into commands are always escaped via `escapeShell()` (single-
 
 ### UI Design System
 Follow the card-based design system documented in [`java/DESIGN.md`](../java/DESIGN.md). All content sections (detail panes, settings forms, about panels) use rounded-corner cards with consistent spacing, key-value GridPane layouts, and the established color palette. Use the `aboutCard()`, `aboutGrid()`, and `aboutRow()` helpers when building new UI sections.
+
+### CSS-Driven Spacing
+All padding and spacing must use CSS classes — never inline `setPadding()` for layout-level spacing.
+
+| Class | Purpose |
+|---|---|
+| `.content-padding` | 20px all sides — used on every page's top-level content container |
+| `.sessions-section` | 20px all sides — rightBox in Sessions page |
+| `.sessions-card` | 8px padding, 8px border-radius, border, shadow — card wrapper for tables, tiles, action bars |
+| `.sessions-detail-pane` | 0px padding, 8px spacing — detail pane (cards provide their own padding) |
+| `.about-card` | Detail card container with background, border, radius |
+
+Gap (`-fx-spacing`) = space between children. Padding (`-fx-padding`) = space between container edge and children.
+
+### Window Management
+- **Cmd+W / Ctrl+W** must close every popup window (use `SHORTCUT_DOWN` modifier via scene accelerators).
+- **Singleton windows**: viewer windows (Events, Checkpoints) use a `static Map<String, Viewer> OPEN_VIEWERS` to prevent duplicates per session. Callers use `static showViewer(...)` factory methods.
+- **Cleanup**: register `stage.setOnHidden(e -> OPEN_VIEWERS.remove(key))` to clean up the map.
+
+### Cross-View Sync
+- **SessionManager** is the single source of truth. All mutations trigger `notifyListeners()`.
+- When deleting from any view, call `sessionManager.removeSession()` so all listeners refresh.
+- **PrunePanel** resets `hasScanned` on SessionManager changes → auto-rescans on next tab visit.
