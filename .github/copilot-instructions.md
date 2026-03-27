@@ -72,3 +72,6 @@ OS is detected via `System.getProperty("os.name", "").toLowerCase()`. Each platf
 - **Linux**: tries terminal emulators in order — `gnome-terminal`, `konsole`, `xterm`, `x-terminal-emulator` — using a single `sh -c` command with `command -v` guards.
 
 Shell paths passed into commands are always escaped via `escapeShell()` (single-quote wrapping with internal `'` escaped as `'\''`).
+
+### UI Design System
+Follow the card-based design system documented in [`java/DESIGN.md`](../java/DESIGN.md). All content sections (detail panes, settings forms, about panels) use rounded-corner cards with consistent spacing, key-value GridPane layouts, and the established color palette. Use the `aboutCard()`, `aboutGrid()`, and `aboutRow()` helpers when building new UI sections.

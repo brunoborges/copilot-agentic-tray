@@ -59,7 +59,6 @@ public class SettingsWindow {
     private TreeView<String> directoryList;
     private TableView<SessionSnapshot> sessionTable;
     private VBox detailPane;
-    private GridPane detailGrid;
     private UsageTilesPane usageTilesPane;
     private HBox actionBar;
     private Button newSessionBtn, resumeBtn, attachBtn, renameBtn, deleteBtn, viewEventsBtn;
@@ -318,17 +317,10 @@ public class SettingsWindow {
                 });
 
         // --- Right bottom: detail + actions ---
-        detailGrid = new GridPane();
-        detailGrid.setHgap(8);
-        detailGrid.setVgap(4);
-        detailGrid.setPadding(new Insets(10));
-        detailGrid.getColumnConstraints().addAll(
-                new ColumnConstraints(90),
-                new ColumnConstraints());
         var placeholderLabel = new Label("Select a session to view details.");
         placeholderLabel.getStyleClass().add("placeholder-label");
-        detailPane = new VBox(placeholderLabel);
-        detailPane.setPadding(new Insets(12));
+        detailPane = new VBox(12, placeholderLabel);
+        detailPane.setPadding(new Insets(16));
 
         // Usage tiles pane (local only)
         usageTilesPane = new UsageTilesPane();
@@ -879,106 +871,86 @@ public class SettingsWindow {
     }
 
     private void showSessionDetail(SessionSnapshot session) {
-        detailGrid.getChildren().clear();
+        var cards = new ArrayList<Node>();
+
+        // --- Session Info card ---
+        var infoGrid = aboutGrid();
         int row = 0;
-        row = addDetailRow(row, "ID", session.id(), true);
-        row = addDetailRow(row, "Name", session.name());
+        aboutRow(infoGrid, row++, "ID", detailValueField(session.id(), true));
+        aboutRow(infoGrid, row++, "Name", detailValueField(session.name(), false));
 
         if (session.remote()) {
-            row = addDetailHyperlink(row, "Repository", session.workingDirectory(),
+            addDetailHyperlinkToGrid(infoGrid, row++, "Repository", session.workingDirectory(),
                     "https://github.com/" + session.workingDirectory());
-            row = addDetailRow(row, "State",
+            aboutRow(infoGrid, row++, "State",
                     session.remoteState() != null ? session.remoteState() : session.status().name());
             if (session.user() != null)
-                row = addDetailRow(row, "User", session.user());
-            if (session.pullRequestNumber() != null) {
-                row = addSectionHeader(row, "Pull Request");
-                row = addDetailRow(row, "PR #", String.valueOf(session.pullRequestNumber()));
-                if (session.pullRequestTitle() != null)
-                    row = addDetailRow(row, "Title", session.pullRequestTitle());
-                if (session.pullRequestState() != null)
-                    row = addDetailRow(row, "PR State", session.pullRequestState());
-                if (session.pullRequestUrl() != null)
-                    row = addDetailHyperlink(row, "URL", session.pullRequestUrl(), session.pullRequestUrl());
-            }
+                aboutRow(infoGrid, row++, "User", session.user());
         } else {
-            row = addDetailRow(row, "Directory", session.workingDirectory(), true);
-            row = addDetailRow(row, "Model", session.model());
-            row = addDetailRow(row, "Status", session.status().name());
-            row = addDetailRow(row, "Location", "Local");
+            aboutRow(infoGrid, row++, "Directory", detailValueField(session.workingDirectory(), true));
+            aboutRow(infoGrid, row++, "Model", session.model());
+            aboutRow(infoGrid, row++, "Status", session.status().name());
         }
 
         if (session.createdAt() != null)
-            row = addDetailRow(row, "Created", DATE_FMT.format(session.createdAt()));
+            aboutRow(infoGrid, row++, "Created", DATE_FMT.format(session.createdAt()));
         if (session.lastActivityAt() != null)
-            row = addDetailRow(row, "Last Active", DATE_FMT.format(session.lastActivityAt()));
+            aboutRow(infoGrid, row, "Last Active", DATE_FMT.format(session.lastActivityAt()));
 
+        cards.add(aboutCard("Session", infoGrid));
+
+        // --- Pull Request card (remote only) ---
+        if (session.remote() && session.pullRequestNumber() != null) {
+            var prGrid = aboutGrid();
+            int pr = 0;
+            aboutRow(prGrid, pr++, "PR #", String.valueOf(session.pullRequestNumber()));
+            if (session.pullRequestTitle() != null)
+                aboutRow(prGrid, pr++, "Title", session.pullRequestTitle());
+            if (session.pullRequestState() != null)
+                aboutRow(prGrid, pr++, "State", session.pullRequestState());
+            if (session.pullRequestUrl() != null)
+                addDetailHyperlinkToGrid(prGrid, pr, "URL", session.pullRequestUrl(), session.pullRequestUrl());
+            cards.add(aboutCard("Pull Request", prGrid));
+        }
+
+        // --- Usage card (local only) ---
         if (!session.remote()) {
-            // Usage section (local only — remote has no token data)
-            row = addSectionHeader(row, "Usage");
-            row = addDetailRow(row, "Tokens", session.usage().currentTokens()
+            var usageGrid = aboutGrid();
+            int u = 0;
+            aboutRow(usageGrid, u++, "Tokens", session.usage().currentTokens()
                     + " / " + session.usage().tokenLimit()
                     + "  (" + (int) session.usage().tokenUsagePercent() + "%)");
-            row = addDetailRow(row, "Messages", String.valueOf(session.usage().messagesCount()));
-
-            if (!session.subagents().isEmpty()) {
-                row = addSectionHeader(row, "Subagents");
-                for (var sub : session.subagents()) {
-                    row = addDetailRow(row, sub.id(), "[" + sub.status() + "] " + sub.description());
-                }
-            }
-            if (session.pendingPermission()) {
-                row = addSectionHeader(row, "");
-                addDetailRow(row, "⚠", "Permission request pending");
-            }
+            aboutRow(usageGrid, u, "Messages", String.valueOf(session.usage().messagesCount()));
+            cards.add(aboutCard("Usage", usageGrid));
         }
-        detailPane.getChildren().setAll(detailGrid);
+
+        // --- Subagents card (local only) ---
+        if (!session.remote() && !session.subagents().isEmpty()) {
+            var subGrid = aboutGrid();
+            int s = 0;
+            for (var sub : session.subagents()) {
+                aboutRow(subGrid, s++, sub.id(), "[" + sub.status() + "] " + sub.description());
+            }
+            cards.add(aboutCard("Subagents", subGrid));
+        }
+
+        // --- Permission warning ---
+        if (!session.remote() && session.pendingPermission()) {
+            var warnLabel = new Label("⚠  Permission request pending");
+            warnLabel.getStyleClass().add("about-value");
+            warnLabel.setStyle("-fx-text-fill: #e8a838;");
+            cards.add(warnLabel);
+        }
+
+        detailPane.getChildren().setAll(cards);
     }
 
-    private void showMultiDetail(java.util.List<SessionSnapshot> selected) {
-        var label = new Label(selected.size() + " sessions selected");
-        label.getStyleClass().add("placeholder-label");
-        detailPane.getChildren().setAll(label);
-    }
-
-    private void clearDetailPane() {
-        var placeholder = new Label("Select a session to view details.");
-        placeholder.getStyleClass().add("placeholder-label");
-        detailPane.getChildren().setAll(placeholder);
-    }
-
-    private int addDetailRow(int row, String label, String value) {
-        return addDetailRow(row, label, value, false);
-    }
-
-    private int addDetailHyperlink(int row, String label, String text, String url) {
-        var keyLabel = new Label(label);
-        keyLabel.getStyleClass().add("detail-key");
-        keyLabel.setMinWidth(Region.USE_PREF_SIZE);
-
-        var link = new Hyperlink(text);
-        link.getStyleClass().add("detail-value");
-        link.setOnAction(e -> {
-            try { java.awt.Desktop.getDesktop().browse(java.net.URI.create(url)); }
-            catch (Exception ex) { LOG.warn("Failed to open URL: {}", ex.getMessage()); }
-        });
-
-        detailGrid.add(keyLabel, 0, row);
-        detailGrid.add(link, 1, row);
-        return row + 1;
-    }
-
-    private int addDetailRow(int row, String label, String value, boolean showCopy) {
-        var keyLabel = new Label(label);
-        keyLabel.getStyleClass().add("detail-key");
-        keyLabel.setMinWidth(Region.USE_PREF_SIZE);
-
+    private Node detailValueField(String value, boolean showCopy) {
         var valueField = new TextField(value != null ? value : "");
         valueField.setEditable(false);
         valueField.setPrefColumnCount(value != null ? Math.max(value.length(), 1) : 1);
         valueField.getStyleClass().add("detail-value");
 
-        javafx.scene.Node valueRow;
         if (showCopy) {
             var copyIcon = createCopyIcon();
             var copyBtn = new Button();
@@ -995,15 +967,39 @@ public class SettingsWindow {
                 flash.setOnFinished(ev -> copyBtn.setOpacity(1.0));
                 flash.play();
             });
-            valueRow = new HBox(2, valueField, copyBtn);
-            ((HBox) valueRow).setAlignment(Pos.CENTER_LEFT);
-        } else {
-            valueRow = valueField;
+            var row = new HBox(2, valueField, copyBtn);
+            row.setAlignment(Pos.CENTER_LEFT);
+            return row;
         }
+        return valueField;
+    }
 
-        detailGrid.add(keyLabel, 0, row);
-        detailGrid.add(valueRow, 1, row);
-        return row + 1;
+    private void addDetailHyperlinkToGrid(GridPane grid, int row, String label, String text, String url) {
+        var keyLabel = new Label(label);
+        keyLabel.getStyleClass().add("about-key");
+        keyLabel.setMinWidth(110);
+
+        var link = new Hyperlink(text);
+        link.getStyleClass().add("detail-value");
+        link.setOnAction(e -> {
+            try { java.awt.Desktop.getDesktop().browse(java.net.URI.create(url)); }
+            catch (Exception ex) { LOG.warn("Failed to open URL: {}", ex.getMessage()); }
+        });
+
+        grid.add(keyLabel, 0, row);
+        grid.add(link, 1, row);
+    }
+
+    private void showMultiDetail(java.util.List<SessionSnapshot> selected) {
+        var label = new Label(selected.size() + " sessions selected");
+        label.getStyleClass().add("placeholder-label");
+        detailPane.getChildren().setAll(label);
+    }
+
+    private void clearDetailPane() {
+        var placeholder = new Label("Select a session to view details.");
+        placeholder.getStyleClass().add("placeholder-label");
+        detailPane.getChildren().setAll(placeholder);
     }
 
     private static final String COPY_ICON_BACK = "M5.5 1H11a1.5 1.5 0 0 1 1.5 1.5V8A1.5 1.5 0 0 1 11 9.5H5.5A1.5 1.5 0 0 1 4 8V2.5A1.5 1.5 0 0 1 5.5 1z";
@@ -1023,13 +1019,6 @@ public class SettingsWindow {
         front.setStrokeWidth(1.2);
 
         return new javafx.scene.Group(back, front);
-    }
-
-    private int addSectionHeader(int row, String title) {
-        var header = new Label(title);
-        header.getStyleClass().add("detail-header");
-        detailGrid.add(header, 0, row, 2, 1);
-        return row + 1;
     }
 
     /** Strip badge suffix like "  [3] ●" from directory label to get the path. */
@@ -1117,51 +1106,85 @@ public class SettingsWindow {
 
     private Node createSettingsContent() {
         var config = configStore.getConfig();
-        var grid = new GridPane();
-        grid.setPadding(new Insets(15));
-        grid.setHgap(10);
-        grid.setVgap(10);
-        int row = 0;
 
-        grid.add(new Label("Theme:"), 0, row);
+        // --- Appearance card ---
+        var appearanceGrid = aboutGrid();
+        var themeKey = new Label("Theme");
+        themeKey.getStyleClass().add("about-key");
+        themeKey.setMinWidth(180);
         themeCombo = new ComboBox<>(FXCollections.observableArrayList("System", "Dark", "Light"));
         themeCombo.setValue(capitalize(config.getTheme()));
-        grid.add(themeCombo, 1, row++);
+        appearanceGrid.add(themeKey, 0, 0);
+        appearanceGrid.add(themeCombo, 1, 0);
+        var appearanceCard = aboutCard("Appearance", appearanceGrid);
 
-        grid.add(new Label("Copilot CLI Path:"), 0, row);
+        // --- CLI card ---
+        var cliGrid = aboutGrid();
+        var cliPathKey = new Label("Copilot CLI Path");
+        cliPathKey.getStyleClass().add("about-key");
+        cliPathKey.setMinWidth(180);
         cliPathField = new TextField(config.getCliPath());
         cliPathField.setPromptText("Auto-detect (leave empty)");
         cliPathField.setPrefWidth(350);
-        grid.add(cliPathField, 1, row++);
+        cliGrid.add(cliPathKey, 0, 0);
+        cliGrid.add(cliPathField, 1, 0);
+        var cliCard = aboutCard("Copilot CLI", cliGrid);
 
-        grid.add(new Label("Poll Interval (seconds):"), 0, row);
+        // --- Polling card ---
+        var pollingGrid = aboutGrid();
+        var pollKey = new Label("Poll Interval (seconds)");
+        pollKey.getStyleClass().add("about-key");
+        pollKey.setMinWidth(180);
         pollIntervalSpinner = new Spinner<>(10, 60, Math.max(10, config.getPollIntervalSeconds()));
-        grid.add(pollIntervalSpinner, 1, row++);
+        pollingGrid.add(pollKey, 0, 0);
+        pollingGrid.add(pollIntervalSpinner, 1, 0);
 
-        grid.add(new Label("Context Warning Threshold (%):"), 0, row);
+        var thresholdKey = new Label("Context Warning (%)");
+        thresholdKey.getStyleClass().add("about-key");
+        thresholdKey.setMinWidth(180);
         warningThresholdSpinner = new Spinner<>(50, 100, config.getContextWarningThreshold());
-        grid.add(warningThresholdSpinner, 1, row++);
+        pollingGrid.add(thresholdKey, 0, 1);
+        pollingGrid.add(warningThresholdSpinner, 1, 1);
+        var pollingCard = aboutCard("Monitoring", pollingGrid);
 
-        grid.add(new Label("Enable Notifications:"), 0, row);
+        // --- Behavior card ---
+        var behaviorGrid = aboutGrid();
+        var notifKey = new Label("Enable Notifications");
+        notifKey.getStyleClass().add("about-key");
+        notifKey.setMinWidth(180);
         notificationsCheckBox = new CheckBox();
         notificationsCheckBox.setSelected(config.isNotificationsEnabled());
-        grid.add(notificationsCheckBox, 1, row++);
+        behaviorGrid.add(notifKey, 0, 0);
+        behaviorGrid.add(notificationsCheckBox, 1, 0);
 
-        grid.add(new Label("Auto-Start on Login:"), 0, row);
+        var autoStartKey = new Label("Auto-Start on Login");
+        autoStartKey.getStyleClass().add("about-key");
+        autoStartKey.setMinWidth(180);
         autoStartCheckBox = new CheckBox();
         autoStartCheckBox.setSelected(config.isAutoStart());
-        grid.add(autoStartCheckBox, 1, row++);
+        behaviorGrid.add(autoStartKey, 0, 1);
+        behaviorGrid.add(autoStartCheckBox, 1, 1);
 
-        grid.add(new Label("Open Dashboard on Startup:"), 0, row);
+        var dashboardKey = new Label("Open Dashboard on Startup");
+        dashboardKey.getStyleClass().add("about-key");
+        dashboardKey.setMinWidth(180);
         openDashboardOnStartupCheckBox = new CheckBox();
         openDashboardOnStartupCheckBox.setSelected(config.isOpenDashboardOnStartup());
-        grid.add(openDashboardOnStartupCheckBox, 1, row++);
+        behaviorGrid.add(dashboardKey, 0, 2);
+        behaviorGrid.add(openDashboardOnStartupCheckBox, 1, 2);
+        var behaviorCard = aboutCard("Behavior", behaviorGrid);
 
+        // --- Save button ---
         var saveButton = new Button("Save");
+        saveButton.getStyleClass().add("action-button");
         saveButton.setOnAction(e -> saveSettings());
-        grid.add(saveButton, 1, row);
 
-        return grid;
+        var content = new VBox(12, appearanceCard, cliCard, pollingCard, behaviorCard, saveButton);
+        content.setPadding(new Insets(20));
+
+        var scrollPane = new ScrollPane(content);
+        scrollPane.setFitToWidth(true);
+        return scrollPane;
     }
 
     private void saveSettings() {
@@ -1312,11 +1335,15 @@ public class SettingsWindow {
     }
 
     private void aboutRow(GridPane grid, int row, String key, Label valueLabel) {
+        aboutRow(grid, row, key, (Node) valueLabel);
+    }
+
+    private void aboutRow(GridPane grid, int row, String key, Node valueNode) {
         var keyLabel = new Label(key);
         keyLabel.getStyleClass().add("about-key");
         keyLabel.setMinWidth(110);
         grid.add(keyLabel, 0, row);
-        grid.add(valueLabel, 1, row);
+        grid.add(valueNode, 1, row);
     }
 
     private Label aboutValueLabel(String text) {
