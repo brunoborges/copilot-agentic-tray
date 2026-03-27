@@ -32,7 +32,7 @@ public class SessionCheckpointViewer {
         stage.setTitle("Checkpoints — " + sessionName);
         stage.initOwner(owner);
 
-        // Left: checkpoint list
+        // Left: checkpoint list in a card
         var listView = new ListView<CheckpointEntry>();
         listView.setPrefWidth(300);
         listView.setMinWidth(200);
@@ -47,16 +47,19 @@ public class SessionCheckpointViewer {
                 }
             }
         });
+        VBox.setVgrow(listView, Priority.ALWAYS);
+        var listCard = new VBox(listView);
+        listCard.getStyleClass().add("sessions-card");
 
-        // Right: content viewer
+        // Right: content viewer in a card
         var contentArea = new TextArea();
         contentArea.setEditable(false);
         contentArea.setWrapText(true);
         contentArea.getStyleClass().add("checkpoint-content");
-        HBox.setHgrow(contentArea, Priority.ALWAYS);
-
-        var contentPlaceholder = new Label("Select a checkpoint to view its content.");
-        contentPlaceholder.setStyle("-fx-text-fill: #888; -fx-font-style: italic;");
+        VBox.setVgrow(contentArea, Priority.ALWAYS);
+        var contentCard = new VBox(contentArea);
+        contentCard.getStyleClass().add("sessions-card");
+        HBox.setHgrow(contentCard, Priority.ALWAYS);
 
         // Wire selection
         listView.getSelectionModel().selectedItemProperty().addListener((obs, old, selected) -> {
@@ -76,12 +79,11 @@ public class SessionCheckpointViewer {
         statsLabel.getStyleClass().add("events-viewer-stats");
         statsLabel.setPadding(new Insets(0, 8, 4, 8));
 
-        var splitPane = new SplitPane(listView, contentArea);
-        splitPane.setDividerPositions(0.30);
-        VBox.setVgrow(splitPane, Priority.ALWAYS);
+        var contentPane = new HBox(8, listCard, contentCard);
+        VBox.setVgrow(contentPane, Priority.ALWAYS);
 
-        var root = new VBox(header, statsLabel, splitPane);
-        root.getStyleClass().add("events-viewer-root");
+        var root = new VBox(8, header, statsLabel, contentPane);
+        root.getStyleClass().addAll("events-viewer-root", "content-padding");
 
         var scene = new Scene(root, 900, 600);
         themeManager.register(scene);
