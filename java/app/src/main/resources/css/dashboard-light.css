@@ -155,6 +155,7 @@
 
 .sessions-detail-pane {
     -fx-padding: 8;
+    -fx-spacing: 8;
 }
 
 .sessions-card-table {
@@ -616,7 +617,6 @@
 
 .usage-tiles-pane {
     -fx-background-color: #1a1a2e;
-    -fx-padding: 8;
 }
 
 /* --- Section labels --- */

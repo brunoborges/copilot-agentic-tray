@@ -72,7 +72,6 @@ public class SettingsWindow {
 
     // Layout containers swapped between local/remote
     private VBox topPane;
-    private VBox tableCard;
     private HBox bottomPane;
     private VBox rightBox;
 
@@ -495,24 +494,20 @@ public class SettingsWindow {
         actionBar = new HBox(8, newSessionBtn, resumeBtn, attachBtn, viewEventsBtn, renameBtn, deleteBtn, deleteProgress,
                 openRepoBtn, openPrBtn, openBrowserBtn, viewLogsBtn);
         actionBar.setAlignment(Pos.CENTER_LEFT);
-        actionBar.getStyleClass().add("action-bar");
+        actionBar.getStyleClass().addAll("action-bar", "sessions-card");
 
-        // Wrap session table in a rounded card
-        tableCard = new VBox(sessionTable);
-        tableCard.getStyleClass().add("sessions-card");
+        // Top: aggregate row + session table (grows to fill)
+        topPane = new VBox(8, usageTilesPane.getAggregateRow(), sessionTable);
+        topPane.getStyleClass().add("sessions-card");
         // Clip content to rounded corners
         var clip = new javafx.scene.shape.Rectangle();
         clip.setArcWidth(16);
         clip.setArcHeight(16);
-        clip.widthProperty().bind(tableCard.widthProperty());
-        clip.heightProperty().bind(tableCard.heightProperty());
-        tableCard.setClip(clip);
-        VBox.setVgrow(sessionTable, Priority.ALWAYS);
-        VBox.setVgrow(tableCard, Priority.ALWAYS);
-
-        // Top: aggregate tiles + session table card (grows to fill)
-        topPane = new VBox(8, usageTilesPane.getAggregateRow(), tableCard);
+        clip.widthProperty().bind(topPane.widthProperty());
+        clip.heightProperty().bind(topPane.heightProperty());
+        topPane.setClip(clip);
         topPane.setMinHeight(200);
+        VBox.setVgrow(sessionTable, Priority.ALWAYS);
         VBox.setVgrow(topPane, Priority.ALWAYS);
 
         // Bottom: fixed-height detail + usage side by side
@@ -732,7 +727,7 @@ public class SettingsWindow {
 
         if (remote) {
             // Remote: no aggregate row, detail pane full-width
-            topPane.getChildren().setAll(tableCard);
+            topPane.getChildren().setAll(sessionTable);
 
             detailPane.setPrefHeight(375);
             detailPane.setMinHeight(375);
@@ -741,7 +736,7 @@ public class SettingsWindow {
             rightBox.getChildren().addAll(topPane, detailPane, actionBarNode);
         } else {
             // Local: aggregate row + table on top, detail+tiles split on bottom
-            topPane.getChildren().setAll(usageTilesPane.getAggregateRow(), tableCard);
+            topPane.getChildren().setAll(usageTilesPane.getAggregateRow(), sessionTable);
 
             detailPane.setPrefHeight(Region.USE_COMPUTED_SIZE);
             detailPane.setMinHeight(Region.USE_COMPUTED_SIZE);
