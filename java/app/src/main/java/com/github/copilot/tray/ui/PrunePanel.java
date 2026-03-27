@@ -207,7 +207,6 @@ public class PrunePanel extends VBox {
         var table = new TableView<PruneCandidate>();
         table.getStyleClass().addAll("prune-card-table", "no-header");
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_NEXT_COLUMN);
-        table.setMaxWidth(Double.MAX_VALUE);
 
         // Checkbox column
         var selectCol = new TableColumn<PruneCandidate, Boolean>("✓");
@@ -334,6 +333,11 @@ public class PrunePanel extends VBox {
         table.setPrefHeight(prefHeight);
         table.setMaxHeight(maxHeight);
         table.setMinHeight(ROW_HEIGHT + 4);
+
+        // Reduce table width slightly so it sits within the card padding
+        table.setMaxWidth(Double.MAX_VALUE);
+        var tableInsets = new Insets(0, 10, 0, 0);
+        VBox.setMargin(table, tableInsets);
 
         return table;
     }
