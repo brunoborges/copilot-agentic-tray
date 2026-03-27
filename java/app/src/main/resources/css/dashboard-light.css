@@ -843,6 +843,12 @@
     -fx-border-color: transparent;
     -fx-padding: 0;
 }
+.prune-card-table .scroll-bar:horizontal {
+    -fx-max-height: 0;
+    -fx-pref-height: 0;
+    -fx-min-height: 0;
+    -fx-opacity: 0;
+}
 .prune-card-table .column-header-background {
     -fx-background-color: transparent;
 }
