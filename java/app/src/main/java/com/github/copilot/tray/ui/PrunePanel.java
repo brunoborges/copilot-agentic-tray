@@ -211,6 +211,9 @@ public class PrunePanel extends VBox {
         var table = new TableView<PruneCandidate>();
         table.getStyleClass().addAll("prune-card-table", "no-header");
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
+        table.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(table, Priority.ALWAYS);
+        VBox.setVgrow(table, Priority.NEVER);
 
         // Checkbox column
         var selectCol = new TableColumn<PruneCandidate, Boolean>("✓");
@@ -339,10 +342,11 @@ public class PrunePanel extends VBox {
             private final MenuItem deleteItem = new MenuItem("Delete");
             {
                 menuBtn.getStyleClass().add("prune-small-btn");
-                menuBtn.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 0 2 0 2;");
-                menuBtn.setMaxWidth(34);
-                menuBtn.setPrefWidth(34);
-                setAlignment(Pos.CENTER_LEFT);
+                menuBtn.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 0; -fx-alignment: center;");
+                menuBtn.setPrefSize(28, 28);
+                menuBtn.setMinSize(28, 28);
+                menuBtn.setMaxSize(28, 28);
+                setAlignment(Pos.CENTER);
                 menuBtn.getItems().addAll(resumeItem, viewEventsItem, copyIdItem,
                         new SeparatorMenuItem(), deleteItem);
                 resumeItem.setOnAction(e -> {

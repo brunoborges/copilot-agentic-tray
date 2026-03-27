@@ -846,8 +846,8 @@
     -fx-border-color: transparent;
 }
 .prune-card-table .table-cell {
-    -fx-border-color: #2a2a3e #3a3a52 transparent transparent;
-    -fx-border-width: 1 1 0 0;
+    -fx-border-color: #2a2a3e transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
 }
 .prune-card-table .table-row-cell {
     -fx-background-color: transparent;
