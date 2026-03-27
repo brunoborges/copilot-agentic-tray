@@ -101,6 +101,7 @@ public class SessionEventsViewer {
         toolbar.getStyleClass().add("events-viewer-toolbar");
 
         var root = new VBox(header, statsLabel, listView, toolbar);
+        root.getStyleClass().add("content-padding");
         VBox.setVgrow(listView, Priority.ALWAYS);
 
         stage = new Stage();

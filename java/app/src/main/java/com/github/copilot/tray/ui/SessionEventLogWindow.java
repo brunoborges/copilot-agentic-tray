@@ -44,7 +44,7 @@ public class SessionEventLogWindow {
         header.setPadding(new Insets(4));
 
         var root = new VBox(4, header, logArea);
-        root.setPadding(new Insets(8));
+        root.getStyleClass().add("content-padding");
         VBox.setVgrow(logArea, Priority.ALWAYS);
 
         stage = new Stage();
