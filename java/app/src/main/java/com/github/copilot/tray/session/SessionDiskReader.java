@@ -411,4 +411,46 @@ public final class SessionDiskReader {
                     });
         }
     }
+
+    /** A single checkpoint entry parsed from disk. */
+    public record CheckpointEntry(int number, String title, String fileName, String content) {}
+
+    /**
+     * Read checkpoints for a session from its checkpoints/ directory.
+     * Parses index.md for the table of contents, then reads each checkpoint file.
+     * @return list of checkpoint entries, sorted by number (ascending)
+     */
+    public static List<CheckpointEntry> readCheckpoints(String sessionId) {
+        var checkpointsDir = SESSION_STORE.resolve(sessionId).resolve("checkpoints");
+        var indexFile = checkpointsDir.resolve("index.md");
+        if (!Files.isRegularFile(indexFile)) {
+            return List.of();
+        }
+        var entries = new java.util.ArrayList<CheckpointEntry>();
+        try {
+            var lines = Files.readAllLines(indexFile);
+            for (var line : lines) {
+                // Parse table rows like: | 1 | Title here | 001-file-name.md |
+                if (!line.startsWith("|")) continue;
+                var parts = line.split("\\|");
+                if (parts.length < 4) continue;
+                var numStr = parts[1].trim();
+                int num;
+                try { num = Integer.parseInt(numStr); } catch (NumberFormatException e) { continue; }
+                var title = parts[2].trim();
+                var fileName = parts[3].trim();
+                var filePath = checkpointsDir.resolve(fileName);
+                String content = "";
+                if (Files.isRegularFile(filePath)) {
+                    try { content = Files.readString(filePath); }
+                    catch (IOException e) { LOG.debug("Failed to read checkpoint file {}", filePath); }
+                }
+                entries.add(new CheckpointEntry(num, title, fileName, content));
+            }
+        } catch (IOException e) {
+            LOG.warn("Failed to read checkpoints index for session {}", sessionId, e);
+        }
+        entries.sort(java.util.Comparator.comparingInt(CheckpointEntry::number));
+        return List.copyOf(entries);
+    }
 }

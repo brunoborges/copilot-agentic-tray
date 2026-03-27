@@ -62,7 +62,7 @@ public class SettingsWindow {
     private VBox detailPane;
     private UsageTilesPane usageTilesPane;
     private HBox actionBar;
-    private Button newSessionBtn, resumeBtn, attachBtn, renameBtn, deleteBtn, viewEventsBtn, compactBtn;
+    private Button newSessionBtn, resumeBtn, attachBtn, renameBtn, deleteBtn, viewEventsBtn, compactBtn, viewCheckpointsBtn;
     // Remote-specific action buttons
     private Button viewLogsBtn, openBrowserBtn, openPrBtn, openRepoBtn;
     private SessionSnapshot selectedSession;
@@ -521,7 +521,15 @@ public class SettingsWindow {
                     });
         });
 
-        actionBar = new HBox(8, newSessionBtn, resumeBtn, attachBtn, viewEventsBtn, compactBtn, renameBtn, deleteBtn, deleteProgress,
+        viewCheckpointsBtn = new Button("Checkpoints");
+        viewCheckpointsBtn.setDisable(true);
+        viewCheckpointsBtn.setOnAction(e -> {
+            if (selectedSession == null) return;
+            new SessionCheckpointViewer(selectedSession.id(), selectedSession.name(),
+                    themeManager, stage).show();
+        });
+
+        actionBar = new HBox(8, newSessionBtn, resumeBtn, attachBtn, viewEventsBtn, viewCheckpointsBtn, compactBtn, renameBtn, deleteBtn, deleteProgress,
                 openRepoBtn, openPrBtn, openBrowserBtn, viewLogsBtn);
         actionBar.setAlignment(Pos.CENTER_LEFT);
         actionBar.getStyleClass().addAll("action-bar", "sessions-card");
@@ -676,6 +684,7 @@ public class SettingsWindow {
             private final MenuButton menuBtn = new MenuButton("\u22EE");
             private final MenuItem resumeItem = new MenuItem("Resume");
             private final MenuItem viewEventsItem = new MenuItem("View Events");
+            private final MenuItem viewCheckpointsItem = new MenuItem("Checkpoints");
             private final MenuItem compactItem = new MenuItem("Compact");
             private final MenuItem copyIdItem = new MenuItem("Copy ID");
             private final MenuItem deleteItem = new MenuItem("Delete");
@@ -686,7 +695,7 @@ public class SettingsWindow {
                 menuBtn.setMinSize(28, 28);
                 menuBtn.setMaxSize(28, 28);
                 setAlignment(Pos.CENTER);
-                menuBtn.getItems().addAll(resumeItem, viewEventsItem, compactItem, copyIdItem,
+                menuBtn.getItems().addAll(resumeItem, viewEventsItem, viewCheckpointsItem, compactItem, copyIdItem,
                         new SeparatorMenuItem(), deleteItem);
                 resumeItem.setOnAction(e -> {
                     var item = getTableRow().getItem();
@@ -696,6 +705,13 @@ public class SettingsWindow {
                     var item = getTableRow().getItem();
                     if (item != null) {
                         new SessionEventsViewer(item.id(), item.name(),
+                                themeManager, stage).show();
+                    }
+                });
+                viewCheckpointsItem.setOnAction(e -> {
+                    var item = getTableRow().getItem();
+                    if (item != null) {
+                        new SessionCheckpointViewer(item.id(), item.name(),
                                 themeManager, stage).show();
                     }
                 });
@@ -971,6 +987,8 @@ public class SettingsWindow {
         attachBtn.setManaged(!remote);
         viewEventsBtn.setVisible(!remote);
         viewEventsBtn.setManaged(!remote);
+        viewCheckpointsBtn.setVisible(!remote);
+        viewCheckpointsBtn.setManaged(!remote);
         compactBtn.setVisible(!remote);
         compactBtn.setManaged(!remote);
         renameBtn.setVisible(!remote);
@@ -980,6 +998,7 @@ public class SettingsWindow {
         resumeBtn.setDisable(none || multi);
         attachBtn.setDisable(none || multi);
         viewEventsBtn.setDisable(none || multi);
+        viewCheckpointsBtn.setDisable(none || multi);
         compactBtn.setDisable(none || multi || !isSessionCompactable());
         renameBtn.setDisable(none || multi);
         deleteBtn.setDisable(none);
