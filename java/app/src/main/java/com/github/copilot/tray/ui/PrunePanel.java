@@ -226,6 +226,7 @@ public class PrunePanel extends VBox {
         });
         nameCol.setPrefWidth(200);
         nameCol.setMinWidth(100);
+        nameCol.setMaxWidth(Double.MAX_VALUE);
         nameCol.setSortable(false);
         nameCol.setCellFactory(col -> new TableCell<>() {
             @Override
