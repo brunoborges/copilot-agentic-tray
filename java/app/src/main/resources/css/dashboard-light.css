@@ -154,7 +154,7 @@
 }
 
 .sessions-detail-pane {
-    -fx-padding: 8;
+    -fx-padding: 0;
     -fx-spacing: 8;
 }
 
