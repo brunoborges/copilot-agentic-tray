@@ -1102,7 +1102,7 @@ public class SettingsWindow {
     // =====================================================================
 
     private Node createPruneContent() {
-        var prunePanel = new PrunePanel(new com.github.copilot.tray.session.SessionPruner(), resumeHandler, themeManager);
+        var prunePanel = new PrunePanel(new com.github.copilot.tray.session.SessionPruner(), resumeHandler, themeManager, sessionManager);
         return prunePanel;
     }
 

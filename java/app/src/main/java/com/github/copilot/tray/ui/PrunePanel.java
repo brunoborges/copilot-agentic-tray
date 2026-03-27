@@ -1,5 +1,6 @@
 package com.github.copilot.tray.ui;
 
+import com.github.copilot.tray.session.SessionManager;
 import com.github.copilot.tray.session.SessionPruner;
 import com.github.copilot.tray.session.SessionPruner.PruneCandidate;
 import com.github.copilot.tray.session.SessionPruner.PruneCategory;
@@ -29,6 +30,7 @@ public class PrunePanel extends VBox {
     private final SessionPruner pruner;
     private final Consumer<String> resumeHandler;
     private final ThemeManager themeManager;
+    private final SessionManager sessionManager;
 
     private final CheckBox includeTrivialCb = new CheckBox("Include trivial sessions (≤5 messages)");
     private final Label statusLabel = new Label("Scanning will start automatically…");
@@ -64,13 +66,15 @@ public class PrunePanel extends VBox {
     private static final int HEADER_HEIGHT = 32;
 
     public PrunePanel() {
-        this(new SessionPruner(), id -> {}, null);
+        this(new SessionPruner(), id -> {}, null, null);
     }
 
-    public PrunePanel(SessionPruner pruner, Consumer<String> resumeHandler, ThemeManager themeManager) {
+    public PrunePanel(SessionPruner pruner, Consumer<String> resumeHandler,
+                      ThemeManager themeManager, SessionManager sessionManager) {
         this.pruner = pruner;
         this.resumeHandler = resumeHandler;
         this.themeManager = themeManager;
+        this.sessionManager = sessionManager;
 
         setSpacing(10);
         setPadding(new Insets(12));
@@ -218,14 +222,12 @@ public class PrunePanel extends VBox {
         selectCol.setSortable(false);
         selectCol.setResizable(false);
 
-        // Name (first user message) — flexes to fill remaining space
+        // Name — use SessionManager's resolved name if available, else firstUserMessage
         var nameCol = new TableColumn<PruneCandidate, String>("Name");
         nameCol.setCellValueFactory(cd -> {
-            var msg = cd.getValue().firstUserMessage();
-            if (msg == null || msg.isEmpty()) return new SimpleStringProperty("");
-            // Truncate for display — full text available via tooltip
-            var display = msg.length() > 50 ? msg.substring(0, 47) + "..." : msg;
-            return new SimpleStringProperty(display);
+            var pc = cd.getValue();
+            var name = resolveSessionName(pc);
+            return new SimpleStringProperty(name);
         });
         nameCol.setPrefWidth(200);
         nameCol.setMinWidth(100);
@@ -243,8 +245,8 @@ public class PrunePanel extends VBox {
                     setTextOverrun(OverrunStyle.ELLIPSIS);
                     setWrapText(false);
                     var pc = getTableRow().getItem();
-                    if (pc != null && pc.firstUserMessage() != null) {
-                        setTooltip(new Tooltip(pc.firstUserMessage()));
+                    if (pc != null) {
+                        setTooltip(new Tooltip(resolveSessionName(pc)));
                     }
                 }
             }
@@ -621,6 +623,21 @@ public class PrunePanel extends VBox {
     }
 
     // --- Utilities ---
+
+    /** Resolve a display name: prefer SessionManager's name, fall back to firstUserMessage. */
+    private String resolveSessionName(PruneCandidate pc) {
+        if (sessionManager != null) {
+            var snapshot = sessionManager.getSession(pc.sessionId());
+            if (snapshot != null) {
+                var name = snapshot.name();
+                if (name != null && !name.equals(pc.sessionId())) {
+                    return name;
+                }
+            }
+        }
+        var msg = pc.firstUserMessage();
+        return (msg == null || msg.isEmpty()) ? pc.sessionId() : msg;
+    }
 
     private static String formatSize(long bytes) {
         if (bytes >= 1_048_576) return String.format("%.1f MB", bytes / 1_048_576.0);
