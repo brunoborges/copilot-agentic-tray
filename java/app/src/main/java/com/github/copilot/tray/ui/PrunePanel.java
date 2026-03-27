@@ -234,7 +234,6 @@ public class PrunePanel extends VBox {
         });
         nameCol.setPrefWidth(200);
         nameCol.setMinWidth(100);
-        nameCol.setMaxWidth(Double.MAX_VALUE);
         nameCol.setSortable(false);
         nameCol.setCellFactory(col -> new TableCell<>() {
             @Override
@@ -392,6 +391,16 @@ public class PrunePanel extends VBox {
         table.setPrefHeight(prefHeight);
         table.setMaxHeight(maxHeight);
         table.setMinHeight(ROW_HEIGHT + 9);
+
+        // Force column layout once the table is rendered in the scene
+        table.sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if (newScene != null) {
+                Platform.runLater(() -> {
+                    table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
+                    table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
+                });
+            }
+        });
 
         return table;
     }
