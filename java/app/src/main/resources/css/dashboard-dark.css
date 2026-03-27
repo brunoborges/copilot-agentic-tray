@@ -855,3 +855,31 @@
 .prune-card-table .table-row-cell:hover {
     -fx-background-color: #2a2a3e;
 }
+
+/* Hide table header for headerless tables */
+.no-header .column-header-background {
+    -fx-max-height: 0;
+    -fx-pref-height: 0;
+    -fx-min-height: 0;
+}
+
+/* Hide dropdown arrow on ⋮ menu buttons */
+.prune-small-btn .arrow-button {
+    -fx-padding: 0;
+    -fx-max-width: 0;
+    -fx-min-width: 0;
+}
+.prune-small-btn .arrow-button .arrow {
+    -fx-padding: 0;
+    -fx-shape: "";
+}
+
+/* Select all/none links in prune card headers */
+.prune-card-link {
+    -fx-text-fill: #7b8cde;
+    -fx-font-size: 11px;
+    -fx-border-color: transparent;
+}
+.prune-card-link:hover {
+    -fx-text-fill: #9babee;
+}

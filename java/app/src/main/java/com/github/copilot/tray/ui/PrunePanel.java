@@ -171,39 +171,25 @@ public class PrunePanel extends VBox {
         card.setPadding(new Insets(12));
         card.setSpacing(8);
 
-        // Card header: checkbox + title with count and total size
+        // Card header: title with count/size on left, Select all/none on right
         long totalSize = sessions.stream().mapToLong(PruneCandidate::diskSizeBytes).sum();
         int count = sessions.size();
-
-        var headerCb = new CheckBox();
-        headerCb.setStyle("-fx-padding: 0 4 0 0;");
 
         var titleLabel = new Label(directory + "  (" + count + " session" + (count != 1 ? "s" : "")
                 + ", " + formatSize(totalSize) + ")");
         titleLabel.getStyleClass().add("about-card-title");
 
-        // Sync header checkbox with children
-        Runnable syncHeaderCb = () -> {
-            boolean all = sessions.stream()
-                    .allMatch(s -> getSelectionProperty(s.sessionId()).get());
-            headerCb.setSelected(all);
-        };
+        var selectAllLink = new Hyperlink("Select all");
+        selectAllLink.getStyleClass().add("prune-card-link");
+        var selectNoneLink = new Hyperlink("Select none");
+        selectNoneLink.getStyleClass().add("prune-card-link");
 
-        // Listen to each session's selection property to keep header checkbox in sync
-        for (var s : sessions) {
-            getSelectionProperty(s.sessionId()).addListener((obs, old, val) ->
-                    Platform.runLater(syncHeaderCb));
-        }
-        syncHeaderCb.run();
+        selectAllLink.setOnAction(e -> sessions.forEach(s -> getSelectionProperty(s.sessionId()).set(true)));
+        selectNoneLink.setOnAction(e -> sessions.forEach(s -> getSelectionProperty(s.sessionId()).set(false)));
 
-        // Header checkbox toggles all sessions in this card
-        headerCb.selectedProperty().addListener((obs, old, val) -> {
-            for (var s : sessions) {
-                getSelectionProperty(s.sessionId()).set(val);
-            }
-        });
-
-        var header = new HBox(6, headerCb, titleLabel);
+        var spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        var header = new HBox(6, titleLabel, spacer, selectAllLink, selectNoneLink);
         header.setAlignment(Pos.CENTER_LEFT);
 
         // Build the embedded table
@@ -216,7 +202,7 @@ public class PrunePanel extends VBox {
     @SuppressWarnings("unchecked")
     private TableView<PruneCandidate> buildCardTable(List<PruneCandidate> sessions) {
         var table = new TableView<PruneCandidate>();
-        table.getStyleClass().add("prune-card-table");
+        table.getStyleClass().addAll("prune-card-table", "no-header");
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
 
         // Checkbox column
@@ -322,9 +308,9 @@ public class PrunePanel extends VBox {
         table.getColumns().addAll(selectCol, nameCol, categoryCol, ageCol, sizeCol, msgsCol, actionsCol);
         table.setItems(FXCollections.observableArrayList(sessions));
 
-        // Size table to fit all rows (no internal scrollbar)
+        // Size table to fit all rows (no header, no internal scrollbar)
         int rowCount = sessions.size();
-        double computedHeight = HEADER_HEIGHT + (rowCount * ROW_HEIGHT) + 2;
+        double computedHeight = (rowCount * ROW_HEIGHT) + 2;
         table.setPrefHeight(computedHeight);
         table.setMaxHeight(Region.USE_PREF_SIZE);
         table.setMinHeight(Region.USE_PREF_SIZE);
