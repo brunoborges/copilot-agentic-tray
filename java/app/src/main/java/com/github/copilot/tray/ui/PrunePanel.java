@@ -226,7 +226,21 @@ public class PrunePanel extends VBox {
         });
         nameCol.setPrefWidth(200);
         nameCol.setMinWidth(100);
+        nameCol.setMaxWidth(Double.MAX_VALUE);
         nameCol.setSortable(false);
+        nameCol.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(item);
+                    setTextOverrun(OverrunStyle.ELLIPSIS);
+                    setWrapText(false);
+                }
+            }
+        });
 
         // Category
         var categoryCol = new TableColumn<PruneCandidate, String>("Category");
