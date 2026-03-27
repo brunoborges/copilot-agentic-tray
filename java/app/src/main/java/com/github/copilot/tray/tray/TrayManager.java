@@ -247,7 +247,8 @@ public class TrayManager {
                 sdkBridge.deleteSession(session.id())
                         .whenComplete((v, ex) -> {
                             if (ex != null) {
-                                LOG.warn("SDK delete failed for session {}, proceeding with disk delete", session.id(), ex);
+                                var cause = ex.getCause() != null ? ex.getCause() : ex;
+                                LOG.info("SDK delete skipped for session {}: {}", session.id(), cause.getMessage());
                             }
                             SessionDiskReader.deleteFromDisk(session.id());
                             sessionManager.removeSession(session.id());

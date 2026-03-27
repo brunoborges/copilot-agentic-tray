@@ -52,7 +52,8 @@ public class TrayApplication {
                     try {
                         sdkBridge.deleteSession(sessionId).join();
                     } catch (Exception ex) {
-                        LOG.warn("SDK delete failed for session {}, proceeding with disk delete", sessionId, ex);
+                        var cause = ex.getCause() != null ? ex.getCause() : ex;
+                        LOG.info("SDK delete skipped for session {}: {}", sessionId, cause.getMessage());
                     }
                     SessionDiskReader.deleteFromDisk(sessionId);
                     sessionManager.removeSession(sessionId);
