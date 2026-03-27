@@ -246,10 +246,7 @@ public class TrayManager {
         sessionMenu.add(actionItem("Delete", e ->
                 sdkBridge.deleteSession(session.id())
                         .whenComplete((v, ex) -> {
-                            if (ex != null) {
-                                var cause = ex.getCause() != null ? ex.getCause() : ex;
-                                LOG.info("SDK delete skipped for session {}: {}", session.id(), cause.getMessage());
-                            }
+                            // SDK may not know about disk-only sessions — that's fine
                             SessionDiskReader.deleteFromDisk(session.id());
                             sessionManager.removeSession(session.id());
                         })));

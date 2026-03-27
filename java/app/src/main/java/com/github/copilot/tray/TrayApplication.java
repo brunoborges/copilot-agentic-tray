@@ -51,9 +51,8 @@ public class TrayApplication {
                 sessionId -> {
                     try {
                         sdkBridge.deleteSession(sessionId).join();
-                    } catch (Exception ex) {
-                        var cause = ex.getCause() != null ? ex.getCause() : ex;
-                        LOG.info("SDK delete skipped for session {}: {}", sessionId, cause.getMessage());
+                    } catch (Exception ignored) {
+                        // SDK may not know about disk-only sessions — that's fine
                     }
                     SessionDiskReader.deleteFromDisk(sessionId);
                     sessionManager.removeSession(sessionId);

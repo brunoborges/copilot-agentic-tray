@@ -402,8 +402,8 @@ public class SettingsWindow {
                                     var s = selected.get(i);
                                     try {
                                         deleteHandler.accept(s.id());
-                                    } catch (Exception ex) {
-                                        LOG.warn("Failed to delete session {}: {}", s.id(), ex.getMessage());
+                                    } catch (Exception ignored) {
+                                        // already handled inside the handler
                                     }
                                     final double progress = (i + 1.0) / total;
                                     Platform.runLater(() -> deleteProgress.setProgress(progress));
