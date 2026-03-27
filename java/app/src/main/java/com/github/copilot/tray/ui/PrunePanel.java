@@ -218,15 +218,18 @@ public class PrunePanel extends VBox {
         selectCol.setSortable(false);
         selectCol.setResizable(false);
 
-        // Name (first user message) — this column flexes to fill remaining space
+        // Name (first user message) — flexes to fill remaining space
         var nameCol = new TableColumn<PruneCandidate, String>("Name");
         nameCol.setCellValueFactory(cd -> {
             var msg = cd.getValue().firstUserMessage();
-            return new SimpleStringProperty(msg != null ? msg : "");
+            if (msg == null || msg.isEmpty()) return new SimpleStringProperty("");
+            // Truncate for display — full text available via tooltip
+            var display = msg.length() > 50 ? msg.substring(0, 47) + "..." : msg;
+            return new SimpleStringProperty(display);
         });
         nameCol.setPrefWidth(200);
         nameCol.setMinWidth(100);
-        nameCol.setMaxWidth(Double.MAX_VALUE);
+        nameCol.setMaxWidth(500);
         nameCol.setSortable(false);
         nameCol.setCellFactory(col -> new TableCell<>() {
             @Override
@@ -234,10 +237,15 @@ public class PrunePanel extends VBox {
                 super.updateItem(item, empty);
                 if (empty || item == null) {
                     setText(null);
+                    setTooltip(null);
                 } else {
                     setText(item);
                     setTextOverrun(OverrunStyle.ELLIPSIS);
                     setWrapText(false);
+                    var pc = getTableRow().getItem();
+                    if (pc != null && pc.firstUserMessage() != null) {
+                        setTooltip(new Tooltip(pc.firstUserMessage()));
+                    }
                 }
             }
         });
