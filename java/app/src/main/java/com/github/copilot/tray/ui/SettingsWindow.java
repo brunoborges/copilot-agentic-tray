@@ -516,7 +516,7 @@ public class SettingsWindow {
 
         // Top: aggregate tiles + session table card (grows to fill)
         topPane = new VBox(8, usageTilesPane.getAggregateRow(), tableCard);
-        topPane.setPadding(new Insets(0, 4, 0, 4));
+        topPane.setPadding(new Insets(0, 12, 0, 12));
         topPane.setMinHeight(200);
         VBox.setVgrow(topPane, Priority.ALWAYS);
 
