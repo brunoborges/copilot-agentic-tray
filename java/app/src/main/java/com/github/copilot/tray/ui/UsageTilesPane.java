@@ -26,6 +26,7 @@ public class UsageTilesPane extends VBox {
 
     private static final double TILE_W = 150;
     private static final double TILE_H = 150;
+    private static final double DONUT_SIZE = 200;
     private static final double SMALL_H = 110;
 
     private static final Color COLOR_SYSTEM    = Color.web("#7b8cde");
@@ -69,7 +70,7 @@ public class UsageTilesPane extends VBox {
 
         donutTile = TileBuilder.create()
                 .skinType(Tile.SkinType.DONUT_CHART)
-                .prefSize(TILE_W, TILE_H)
+                .prefSize(DONUT_SIZE, DONUT_SIZE)
                 .chartData(systemToolsData, messagesData)
                 .animated(false)
                 .textSize(Tile.TextSize.SMALLER)
@@ -77,7 +78,7 @@ public class UsageTilesPane extends VBox {
 
         contextGauge = TileBuilder.create()
                 .skinType(Tile.SkinType.GAUGE)
-                .prefSize(TILE_W, TILE_H)
+                .prefSize(DONUT_SIZE, DONUT_SIZE)
                 .unit("%")
                 .minValue(0).maxValue(100).value(0)
                 .thresholdVisible(false).threshold(80)
@@ -89,7 +90,7 @@ public class UsageTilesPane extends VBox {
 
         messagesDonutTile = TileBuilder.create()
                 .skinType(Tile.SkinType.DONUT_CHART)
-                .prefSize(TILE_W, TILE_H)
+                .prefSize(DONUT_SIZE, DONUT_SIZE)
                 .chartData(userMsgsData, asstMsgsData)
                 .animated(false)
                 .textSize(Tile.TextSize.SMALLER)
