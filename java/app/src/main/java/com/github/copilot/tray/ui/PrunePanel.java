@@ -605,9 +605,17 @@ public class PrunePanel extends VBox {
         note.setStyle("-fx-font-style: italic; -fx-padding: 4 0 0 0;");
         cards.getChildren().add(note);
 
+        var dismissBtn = new Button("Dismiss");
+        dismissBtn.getStyleClass().add("prune-scan-btn");
+        dismissBtn.setOnAction(e -> stage.close());
+        var btnBox = new HBox(dismissBtn);
+        btnBox.setAlignment(Pos.CENTER_RIGHT);
+        btnBox.setPadding(new Insets(8, 0, 0, 0));
+        cards.getChildren().add(btnBox);
+
         var scene = new javafx.scene.Scene(new ScrollPane(cards) {{
             setFitToWidth(true);
-        }}, 480, 420);
+        }}, 480, 520);
         if (themeManager != null) themeManager.register(scene);
         scene.getAccelerators().put(
                 new javafx.scene.input.KeyCodeCombination(
