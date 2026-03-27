@@ -139,6 +139,11 @@ public class PrunePanel extends VBox {
                 Platform.runLater(this::runScan);
             }
         });
+
+        // Re-scan when the Prune tab becomes visible again after deletions elsewhere
+        sessionManager.addChangeListener(sessions -> Platform.runLater(() -> {
+            hasScanned = false;
+        }));
     }
 
     // --- Card layout ---
