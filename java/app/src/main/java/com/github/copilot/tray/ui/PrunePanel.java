@@ -287,7 +287,8 @@ public class PrunePanel extends VBox {
         var actionsCol = new TableColumn<PruneCandidate, Void>("⋮");
         actionsCol.setPrefWidth(40);
         actionsCol.setMinWidth(40);
-        actionsCol.setMaxWidth(40);
+        actionsCol.setMinWidth(30);
+        actionsCol.setMaxWidth(30);
         actionsCol.setSortable(false);
         actionsCol.setResizable(false);
         actionsCol.setCellFactory(col -> new TableCell<>() {
@@ -297,7 +298,9 @@ public class PrunePanel extends VBox {
             private final MenuItem deleteItem = new MenuItem("Delete");
             {
                 menuBtn.getStyleClass().add("prune-small-btn");
-                menuBtn.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+                menuBtn.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 0 2 0 2;");
+                menuBtn.setMaxWidth(26);
+                menuBtn.setPrefWidth(26);
                 menuBtn.getItems().addAll(resumeItem, viewEventsItem, new SeparatorMenuItem(), deleteItem);
                 resumeItem.setOnAction(e -> {
                     var item = getTableRow().getItem();
@@ -333,11 +336,6 @@ public class PrunePanel extends VBox {
         table.setPrefHeight(prefHeight);
         table.setMaxHeight(maxHeight);
         table.setMinHeight(ROW_HEIGHT + 9);
-
-        // Reduce table width slightly so it sits within the card padding
-        table.setMaxWidth(Double.MAX_VALUE);
-        var tableInsets = new Insets(0, 15, 0, 0);
-        VBox.setMargin(table, tableInsets);
 
         return table;
     }
