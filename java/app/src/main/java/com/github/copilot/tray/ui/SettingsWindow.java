@@ -391,8 +391,11 @@ public class SettingsWindow {
             var msg = selected.size() == 1
                     ? "Delete session '" + selected.getFirst().name() + "'?"
                     : "Delete " + selected.size() + " selected sessions?";
-            var alert = new Alert(Alert.AlertType.CONFIRMATION, msg, ButtonType.YES, ButtonType.NO);
+            var alert = new Alert(Alert.AlertType.WARNING, msg, ButtonType.YES, ButtonType.NO);
+            alert.setTitle("Delete Session");
+            alert.setHeaderText(null);
             alert.initOwner(stage);
+            if (themeManager != null) themeManager.register(alert.getDialogPane().getScene());
             alert.showAndWait().ifPresent(bt -> {
                         if (bt == ButtonType.YES) {
                             actionBar.setDisable(true);
