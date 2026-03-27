@@ -12,6 +12,7 @@ import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 
+import javafx.scene.layout.Region;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 
@@ -21,7 +22,7 @@ import java.util.function.Consumer;
 
 /**
  * UI panel for scanning and pruning low-value sessions.
- * Shows a dry-run preview with metadata, then requires explicit confirmation.
+ * Uses a card-based layout grouped by working directory.
  */
 public class PrunePanel extends VBox {
 
@@ -29,16 +30,18 @@ public class PrunePanel extends VBox {
     private final Consumer<String> resumeHandler;
     private final ThemeManager themeManager;
 
-    private final TableView<PruneCandidate> table = new TableView<>();
     private final CheckBox includeTrivialCb = new CheckBox("Include trivial sessions (≤5 messages)");
-    private final Label statusLabel = new Label("Click 'Scan' to find pruneable sessions.");
+    private final Label statusLabel = new Label("Scanning will start automatically…");
     private final Label summaryLabel = new Label("");
-    private final Button scanBtn = new Button("Scan for Pruneable Sessions");
     private final Button pruneBtn = new Button("Delete Selected");
     private final ProgressIndicator spinner = new ProgressIndicator();
 
-    // Shift-click range selection: track last toggled row index
-    private int lastClickedIndex = -1;
+    // Card container inside a ScrollPane
+    private final VBox cardsContainer = new VBox(12);
+    private final ScrollPane scrollPane = new ScrollPane(cardsContainer);
+
+    // Shift-click range selection: track last toggled row index per card table
+    private final Map<TableView<PruneCandidate>, Integer> lastClickedIndexMap = new HashMap<>();
 
     // Selection buttons
     private final Button deselectAllBtn = new Button("Deselect All");
@@ -49,14 +52,15 @@ public class PrunePanel extends VBox {
     private final Button selectAllBtn = new Button("Select All");
     private final Button infoBtn = new Button("ℹ Categories");
 
-    // View toggle (flat table vs tree by directory)
-    private final ToggleButton flatViewBtn = new ToggleButton("⊞ Table");
-    private final ToggleButton treeViewBtn = new ToggleButton("⊟ By Directory");
-    private final TreeTableView<Object> treeTable = new TreeTableView<>();
-
     // Per-row selection state keyed by sessionId
     private final Map<String, SimpleBooleanProperty> selectionMap = new LinkedHashMap<>();
     private List<PruneCandidate> candidates = List.of();
+
+    // Auto-scan guard
+    private boolean hasScanned = false;
+
+    private static final int ROW_HEIGHT = 28;
+    private static final int HEADER_HEIGHT = 32;
 
     public PrunePanel() {
         this(new SessionPruner(), id -> {}, null);
@@ -70,19 +74,15 @@ public class PrunePanel extends VBox {
         setSpacing(10);
         setPadding(new Insets(12));
 
-        buildTable();
-
         // Scan controls
         includeTrivialCb.setSelected(true);
-        scanBtn.setOnAction(e -> runScan());
-        scanBtn.getStyleClass().add("prune-scan-btn");
 
         spinner.setVisible(false);
         spinner.setPrefSize(20, 20);
 
         infoBtn.setOnAction(e -> showCategoryInfo());
 
-        var topRow = new HBox(10, scanBtn, includeTrivialCb, infoBtn, spinner);
+        var topRow = new HBox(10, includeTrivialCb, infoBtn, spinner);
         topRow.setAlignment(Pos.CENTER_LEFT);
 
         summaryLabel.getStyleClass().add("prune-summary");
@@ -99,19 +99,9 @@ public class PrunePanel extends VBox {
         selectTrivialBtn.setOnAction(e -> { clearAllSelections(); setSelectionByCategory(PruneCategory.TRIVIAL, true); });
         selectCorruptedBtn.setOnAction(e -> { clearAllSelections(); setSelectionByCategory(PruneCategory.CORRUPTED, true); });
 
-        // View toggle
-        var toggleGroup = new ToggleGroup();
-        flatViewBtn.setToggleGroup(toggleGroup);
-        treeViewBtn.setToggleGroup(toggleGroup);
-        flatViewBtn.setSelected(false);
-        treeViewBtn.setSelected(true);
-        toggleGroup.selectedToggleProperty().addListener((obs, old, sel) -> switchView(sel == treeViewBtn));
-
         var selectionRow = new HBox(8, deselectAllBtn, selectAllBtn,
                 new Separator(javafx.geometry.Orientation.VERTICAL),
-                selectEmptyBtn, selectAbandonedBtn, selectTrivialBtn, selectCorruptedBtn,
-                new Separator(javafx.geometry.Orientation.VERTICAL),
-                flatViewBtn, treeViewBtn);
+                selectEmptyBtn, selectAbandonedBtn, selectTrivialBtn, selectCorruptedBtn);
         selectionRow.setAlignment(Pos.CENTER_LEFT);
         setSelectionControlsDisabled(true);
 
@@ -124,52 +114,134 @@ public class PrunePanel extends VBox {
         bottomRow.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(statusLabel, Priority.ALWAYS);
 
-        buildTreeTable();
-        // Default to tree (By Directory) view
-        table.setVisible(false);
-        table.setManaged(false);
-        var viewContainer = new StackPane(table, treeTable);
+        // ScrollPane setup
+        scrollPane.setFitToWidth(true);
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        cardsContainer.setPadding(new Insets(4));
 
-        getChildren().addAll(topRow, summaryLabel, selectionRow, viewContainer, bottomRow);
-        VBox.setVgrow(viewContainer, Priority.ALWAYS);
+        getChildren().addAll(topRow, summaryLabel, selectionRow, scrollPane, bottomRow);
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
+
+        // Auto-scan when the panel becomes visible
+        visibleProperty().addListener((obs, wasVisible, isNowVisible) -> {
+            if (isNowVisible && !hasScanned) {
+                hasScanned = true;
+                Platform.runLater(this::runScan);
+            }
+        });
+    }
+
+    // --- Card layout ---
+
+    @SuppressWarnings("unchecked")
+    private void rebuildCards() {
+        cardsContainer.getChildren().clear();
+        lastClickedIndexMap.clear();
+
+        if (candidates.isEmpty()) {
+            var placeholder = new Label("No pruneable sessions found.");
+            placeholder.getStyleClass().add("prune-status");
+            placeholder.setPadding(new Insets(20));
+            cardsContainer.getChildren().add(placeholder);
+            return;
+        }
+
+        // Group by directory
+        var byDir = new LinkedHashMap<String, List<PruneCandidate>>();
+        for (var c : candidates) {
+            String dir = (c.workingDirectory() == null || c.workingDirectory().isEmpty())
+                    ? "(Other)" : c.workingDirectory();
+            byDir.computeIfAbsent(dir, k -> new ArrayList<>()).add(c);
+        }
+
+        var sortedDirs = new ArrayList<>(byDir.keySet());
+        Collections.sort(sortedDirs);
+
+        for (var dir : sortedDirs) {
+            var sessions = byDir.get(dir);
+            cardsContainer.getChildren().add(buildCard(dir, sessions));
+        }
     }
 
     @SuppressWarnings("unchecked")
-    private void buildTable() {
+    private VBox buildCard(String directory, List<PruneCandidate> sessions) {
+        var card = new VBox();
+        card.getStyleClass().add("about-card");
+        card.setPadding(new Insets(12));
+        card.setSpacing(8);
+
+        // Card header: checkbox + title with count and total size
+        long totalSize = sessions.stream().mapToLong(PruneCandidate::diskSizeBytes).sum();
+        int count = sessions.size();
+
+        var headerCb = new CheckBox();
+        headerCb.setStyle("-fx-padding: 0 4 0 0;");
+
+        var titleLabel = new Label(directory + "  (" + count + " session" + (count != 1 ? "s" : "")
+                + ", " + formatSize(totalSize) + ")");
+        titleLabel.getStyleClass().add("about-card-title");
+
+        // Sync header checkbox with children
+        Runnable syncHeaderCb = () -> {
+            boolean all = sessions.stream()
+                    .allMatch(s -> getSelectionProperty(s.sessionId()).get());
+            headerCb.setSelected(all);
+        };
+
+        // Listen to each session's selection property to keep header checkbox in sync
+        for (var s : sessions) {
+            getSelectionProperty(s.sessionId()).addListener((obs, old, val) ->
+                    Platform.runLater(syncHeaderCb));
+        }
+        syncHeaderCb.run();
+
+        // Header checkbox toggles all sessions in this card
+        headerCb.selectedProperty().addListener((obs, old, val) -> {
+            for (var s : sessions) {
+                getSelectionProperty(s.sessionId()).set(val);
+            }
+        });
+
+        var header = new HBox(6, headerCb, titleLabel);
+        header.setAlignment(Pos.CENTER_LEFT);
+
+        // Build the embedded table
+        var table = buildCardTable(sessions);
+
+        card.getChildren().addAll(header, table);
+        return card;
+    }
+
+    @SuppressWarnings("unchecked")
+    private TableView<PruneCandidate> buildCardTable(List<PruneCandidate> sessions) {
+        var table = new TableView<PruneCandidate>();
+        table.getStyleClass().add("prune-card-table");
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+
         // Checkbox column
         var selectCol = new TableColumn<PruneCandidate, Boolean>("✓");
         selectCol.setCellValueFactory(cd -> getSelectionProperty(cd.getValue().sessionId()));
-        selectCol.setCellFactory(col -> new CheckBoxCell());
-        selectCol.setPrefWidth(60);
-        selectCol.setMinWidth(60);
-        selectCol.setMaxWidth(60);
-        var idCol = new TableColumn<PruneCandidate, String>("Session ID");
-        idCol.setCellValueFactory(cd -> new SimpleStringProperty(
-                cd.getValue().sessionId().substring(0, Math.min(8, cd.getValue().sessionId().length())) + "…"));
-        idCol.setPrefWidth(80);
-        idCol.setCellFactory(col -> {
-            var cell = new TableCell<PruneCandidate, String>() {
-                @Override
-                protected void updateItem(String item, boolean empty) {
-                    super.updateItem(item, empty);
-                    setText(empty ? null : item);
-                    if (!empty) {
-                        // Show full ID on hover
-                        var candidate = getTableRow().getItem();
-                        if (candidate != null) {
-                            setTooltip(new Tooltip(candidate.sessionId()));
-                        }
-                    }
-                }
-            };
-            cell.getStyleClass().add("prune-mono-cell");
-            return cell;
+        selectCol.setCellFactory(col -> new CardCheckBoxCell(table));
+        selectCol.setPrefWidth(40);
+        selectCol.setMinWidth(40);
+        selectCol.setMaxWidth(40);
+        selectCol.setSortable(false);
+
+        // Name (first user message)
+        var nameCol = new TableColumn<PruneCandidate, String>("Name");
+        nameCol.setCellValueFactory(cd -> {
+            var msg = cd.getValue().firstUserMessage();
+            return new SimpleStringProperty(msg != null ? msg : "");
         });
+        nameCol.setPrefWidth(220);
+        nameCol.setSortable(false);
 
         // Category
         var categoryCol = new TableColumn<PruneCandidate, String>("Category");
         categoryCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().category().name()));
         categoryCol.setPrefWidth(90);
+        categoryCol.setSortable(false);
         categoryCol.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(String item, boolean empty) {
@@ -189,40 +261,30 @@ public class PrunePanel extends VBox {
             }
         });
 
-        // First user message
-        var titleCol = new TableColumn<PruneCandidate, String>("First Message");
-        titleCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().firstUserMessage()));
-        titleCol.setPrefWidth(220);
-
         // Age
         var ageCol = new TableColumn<PruneCandidate, String>("Age");
         ageCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().age()));
         ageCol.setPrefWidth(65);
+        ageCol.setSortable(false);
 
         // Size
         var sizeCol = new TableColumn<PruneCandidate, String>("Size");
         sizeCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().diskSizeFormatted()));
         sizeCol.setPrefWidth(65);
+        sizeCol.setSortable(false);
 
-        // User / Assistant messages
-        var userMsgCol = new TableColumn<PruneCandidate, String>("Usr");
-        userMsgCol.setCellValueFactory(cd ->
-                new SimpleStringProperty(String.valueOf(cd.getValue().userMessageCount())));
-        userMsgCol.setPrefWidth(40);
-
-        var assistMsgCol = new TableColumn<PruneCandidate, String>("Ast");
-        assistMsgCol.setCellValueFactory(cd ->
-                new SimpleStringProperty(String.valueOf(cd.getValue().assistantMessageCount())));
-        assistMsgCol.setPrefWidth(40);
-
-        // Working directory
-        var dirCol = new TableColumn<PruneCandidate, String>("Directory");
-        dirCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().workingDirectory()));
-        dirCol.setPrefWidth(160);
+        // Combined user/assistant messages
+        var msgsCol = new TableColumn<PruneCandidate, String>("Msgs");
+        msgsCol.setCellValueFactory(cd -> new SimpleStringProperty(
+                cd.getValue().userMessageCount() + "/" + cd.getValue().assistantMessageCount()));
+        msgsCol.setPrefWidth(50);
+        msgsCol.setSortable(false);
 
         // Actions column
-        var actionsCol = new TableColumn<PruneCandidate, Void>("Actions");
-        actionsCol.setPrefWidth(60);
+        var actionsCol = new TableColumn<PruneCandidate, Void>("⋮");
+        actionsCol.setPrefWidth(50);
+        actionsCol.setMinWidth(50);
+        actionsCol.setMaxWidth(50);
         actionsCol.setSortable(false);
         actionsCol.setCellFactory(col -> new TableCell<>() {
             private final MenuButton menuBtn = new MenuButton("\u22EE");
@@ -257,262 +319,17 @@ public class PrunePanel extends VBox {
             }
         });
 
-        table.getColumns().addAll(selectCol, idCol, categoryCol, titleCol, ageCol,
-                sizeCol, userMsgCol, assistMsgCol, dirCol, actionsCol);
-        table.setPlaceholder(new Label("No pruneable sessions found. Click 'Scan' to search."));
-    }
+        table.getColumns().addAll(selectCol, nameCol, categoryCol, ageCol, sizeCol, msgsCol, actionsCol);
+        table.setItems(FXCollections.observableArrayList(sessions));
 
-    @SuppressWarnings("unchecked")
-    private void buildTreeTable() {
-        treeTable.setShowRoot(false);
+        // Size table to fit all rows (no internal scrollbar)
+        int rowCount = sessions.size();
+        double computedHeight = HEADER_HEIGHT + (rowCount * ROW_HEIGHT) + 2;
+        table.setPrefHeight(computedHeight);
+        table.setMaxHeight(Region.USE_PREF_SIZE);
+        table.setMinHeight(Region.USE_PREF_SIZE);
 
-        // Checkbox column — typed as String (sessionId) to guarantee updateItem fires on reuse
-        var selectCol = new TreeTableColumn<Object, String>("✓");
-        selectCol.setCellValueFactory(cd -> {
-            if (cd.getValue().getValue() instanceof PruneCandidate pc) {
-                return new SimpleStringProperty(pc.sessionId());
-            } else if (cd.getValue().getValue() instanceof String dir) {
-                return new SimpleStringProperty("group:" + dir);
-            }
-            return new SimpleStringProperty(null);
-        });
-        selectCol.setCellFactory(col -> new TreeCheckBoxCell());
-        selectCol.setPrefWidth(60);
-        selectCol.setMinWidth(60);
-        selectCol.setMaxWidth(60);
-        var nameCol = new TreeTableColumn<Object, String>("Name / Directory");
-        nameCol.setCellValueFactory(cd -> {
-            var val = cd.getValue().getValue();
-            if (val instanceof PruneCandidate pc) {
-                var idSnip = pc.sessionId().substring(0, Math.min(8, pc.sessionId().length())) + "…";
-                var msg = pc.firstUserMessage();
-                return new SimpleStringProperty(idSnip + "  " + (msg != null ? msg : ""));
-            } else if (val instanceof String dir) {
-                int count = cd.getValue().getChildren().size();
-                return new SimpleStringProperty(dir + "  (" + count + " session" + (count != 1 ? "s" : "") + ")");
-            }
-            return new SimpleStringProperty("");
-        });
-        nameCol.setPrefWidth(350);
-        nameCol.setCellFactory(col -> new TreeTableCell<>() {
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                getStyleClass().removeIf(c -> c.startsWith("prune-"));
-                if (empty || item == null) {
-                    setText(null);
-                    setTooltip(null);
-                } else {
-                    setText(item);
-                    var ti = getIndex() >= 0 ? treeTable.getTreeItem(getIndex()) : null;
-                    if (ti != null && ti.getValue() instanceof PruneCandidate pc) {
-                        setTooltip(new Tooltip(pc.sessionId()));
-                        getStyleClass().add("prune-mono-cell");
-                    } else if (ti != null && ti.getValue() instanceof String dir) {
-                        setTooltip(new Tooltip(dir));
-                        getStyleClass().add("prune-bold-cell");
-                    } else {
-                        setTooltip(null);
-                    }
-                }
-            }
-        });
-
-        // Category
-        var categoryCol = new TreeTableColumn<Object, String>("Category");
-        categoryCol.setCellValueFactory(cd -> {
-            if (cd.getValue().getValue() instanceof PruneCandidate pc) {
-                return new SimpleStringProperty(pc.category().name());
-            }
-            return new SimpleStringProperty("");
-        });
-        categoryCol.setPrefWidth(90);
-        categoryCol.setCellFactory(col -> new TreeTableCell<>() {
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                getStyleClass().removeIf(c -> c.startsWith("prune-cat-"));
-                if (empty || item == null || item.isEmpty()) {
-                    setText(null);
-                } else {
-                    setText(item);
-                    getStyleClass().add(switch (PruneCategory.valueOf(item)) {
-                        case EMPTY -> "prune-cat-empty";
-                        case ABANDONED -> "prune-cat-abandoned";
-                        case TRIVIAL -> "prune-cat-trivial";
-                        case CORRUPTED -> "prune-cat-corrupted";
-                    });
-                }
-            }
-        });
-
-        // Age
-        var ageCol = new TreeTableColumn<Object, String>("Age");
-        ageCol.setCellValueFactory(cd -> {
-            if (cd.getValue().getValue() instanceof PruneCandidate pc) {
-                return new SimpleStringProperty(pc.age());
-            }
-            return new SimpleStringProperty("");
-        });
-        ageCol.setPrefWidth(65);
-
-        // Size (aggregate for groups)
-        var sizeCol = new TreeTableColumn<Object, String>("Size");
-        sizeCol.setCellValueFactory(cd -> {
-            var val = cd.getValue().getValue();
-            if (val instanceof PruneCandidate pc) {
-                return new SimpleStringProperty(pc.diskSizeFormatted());
-            } else if (val instanceof String) {
-                long total = cd.getValue().getChildren().stream()
-                        .map(TreeItem::getValue)
-                        .filter(PruneCandidate.class::isInstance)
-                        .map(PruneCandidate.class::cast)
-                        .mapToLong(PruneCandidate::diskSizeBytes)
-                        .sum();
-                return new SimpleStringProperty(formatSize(total));
-            }
-            return new SimpleStringProperty("");
-        });
-        sizeCol.setPrefWidth(65);
-
-        // Usr
-        var userMsgCol = new TreeTableColumn<Object, String>("Usr");
-        userMsgCol.setCellValueFactory(cd -> {
-            var val = cd.getValue().getValue();
-            if (val instanceof PruneCandidate pc) {
-                return new SimpleStringProperty(String.valueOf(pc.userMessageCount()));
-            } else if (val instanceof String) {
-                int total = cd.getValue().getChildren().stream()
-                        .map(TreeItem::getValue)
-                        .filter(PruneCandidate.class::isInstance)
-                        .map(PruneCandidate.class::cast)
-                        .mapToInt(PruneCandidate::userMessageCount)
-                        .sum();
-                return new SimpleStringProperty(String.valueOf(total));
-            }
-            return new SimpleStringProperty("");
-        });
-        userMsgCol.setPrefWidth(40);
-
-        // Ast
-        var assistMsgCol = new TreeTableColumn<Object, String>("Ast");
-        assistMsgCol.setCellValueFactory(cd -> {
-            var val = cd.getValue().getValue();
-            if (val instanceof PruneCandidate pc) {
-                return new SimpleStringProperty(String.valueOf(pc.assistantMessageCount()));
-            } else if (val instanceof String) {
-                int total = cd.getValue().getChildren().stream()
-                        .map(TreeItem::getValue)
-                        .filter(PruneCandidate.class::isInstance)
-                        .map(PruneCandidate.class::cast)
-                        .mapToInt(PruneCandidate::assistantMessageCount)
-                        .sum();
-                return new SimpleStringProperty(String.valueOf(total));
-            }
-            return new SimpleStringProperty("");
-        });
-        assistMsgCol.setPrefWidth(40);
-
-        // Actions — typed as String (sessionId) so updateItem fires reliably on cell reuse
-        var actionsCol = new TreeTableColumn<Object, String>("Actions");
-        actionsCol.setPrefWidth(60);
-        actionsCol.setSortable(false);
-        actionsCol.setCellValueFactory(cd -> {
-            if (cd.getValue().getValue() instanceof PruneCandidate pc) {
-                return new SimpleStringProperty(pc.sessionId());
-            }
-            return new SimpleStringProperty(null);
-        });
-        actionsCol.setCellFactory(col -> new TreeTableCell<>() {
-            private final MenuButton menuBtn = new MenuButton("\u22EE");
-            private final MenuItem resumeItem = new MenuItem("Resume");
-            private final MenuItem viewEventsItem = new MenuItem("View Events");
-            private final MenuItem deleteItem = new MenuItem("Delete");
-            {
-                menuBtn.getStyleClass().add("prune-small-btn");
-                menuBtn.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
-                menuBtn.getItems().addAll(resumeItem, viewEventsItem, new SeparatorMenuItem(), deleteItem);
-            }
-
-            @Override
-            protected void updateItem(String sessionId, boolean empty) {
-                super.updateItem(sessionId, empty);
-                if (empty || sessionId == null) {
-                    setGraphic(null);
-                } else {
-                    resumeItem.setOnAction(e -> resumeHandler.accept(sessionId));
-                    viewEventsItem.setOnAction(e -> {
-                        var name = candidates.stream()
-                                .filter(c -> c.sessionId().equals(sessionId))
-                                .map(PruneCandidate::firstUserMessage)
-                                .findFirst().orElse(sessionId);
-                        new SessionEventsViewer(sessionId, name, themeManager, null).show();
-                    });
-                    deleteItem.setOnAction(e -> candidates.stream()
-                            .filter(c -> c.sessionId().equals(sessionId))
-                            .findFirst()
-                            .ifPresent(pc -> deleteSingleSession(pc)));
-                    setGraphic(menuBtn);
-                }
-            }
-        });
-
-        treeTable.getColumns().addAll(selectCol, nameCol, categoryCol, ageCol,
-                sizeCol, userMsgCol, assistMsgCol, actionsCol);
-        treeTable.setPlaceholder(new Label("No pruneable sessions found. Click 'Scan' to search."));
-    }
-
-    // Track which directories the user has manually collapsed
-    private final Set<String> collapsedDirs = new HashSet<>();
-
-    private void rebuildTreeView() {
-        // Detach old root first to prevent stale listeners from firing
-        treeTable.setRoot(null);
-
-        var root = new TreeItem<Object>("Root");
-        root.setExpanded(true);
-
-        var byDir = new LinkedHashMap<String, List<PruneCandidate>>();
-        for (var c : candidates) {
-            String dir = c.workingDirectory().isEmpty() ? "(unknown)" : c.workingDirectory();
-            byDir.computeIfAbsent(dir, k -> new ArrayList<>()).add(c);
-        }
-
-        var sortedDirs = new ArrayList<>(byDir.keySet());
-        Collections.sort(sortedDirs);
-
-        // Remove collapsed entries for dirs that no longer exist
-        collapsedDirs.retainAll(byDir.keySet());
-
-        for (var dir : sortedDirs) {
-            var dirItem = new TreeItem<Object>((Object) dir);
-            dirItem.setExpanded(!collapsedDirs.contains(dir));
-            for (var c : byDir.get(dir)) {
-                dirItem.getChildren().add(new TreeItem<>(c));
-            }
-            // Add listener AFTER children are added and expanded state is set
-            dirItem.expandedProperty().addListener((obs, old, expanded) -> {
-                if (expanded) collapsedDirs.remove(dir);
-                else collapsedDirs.add(dir);
-            });
-            root.getChildren().add(dirItem);
-        }
-        treeTable.setRoot(root);
-    }
-
-    private void switchView(boolean showTree) {
-        if (showTree) {
-            table.setVisible(false);
-            table.setManaged(false);
-            treeTable.setVisible(true);
-            treeTable.setManaged(true);
-            rebuildTreeView();
-        } else {
-            treeTable.setVisible(false);
-            treeTable.setManaged(false);
-            table.setVisible(true);
-            table.setManaged(true);
-        }
+        return table;
     }
 
     // --- Selection management ---
@@ -565,9 +382,8 @@ public class PrunePanel extends VBox {
     // --- Scan ---
 
     private void runScan() {
-        scanBtn.setDisable(true);
         spinner.setVisible(true);
-        statusLabel.setText("Scanning sessions...");
+        statusLabel.setText("Scanning sessions…");
         summaryLabel.setText("");
         pruneBtn.setDisable(true);
         setSelectionControlsDisabled(true);
@@ -578,9 +394,7 @@ public class PrunePanel extends VBox {
         CompletableFuture.supplyAsync(() -> pruner.scan(includeTrivial))
                 .thenAccept(results -> Platform.runLater(() -> {
                     candidates = results;
-                    table.setItems(FXCollections.observableArrayList(candidates));
-                    rebuildTreeView();
-                    scanBtn.setDisable(false);
+                    rebuildCards();
                     spinner.setVisible(false);
 
                     if (candidates.isEmpty()) {
@@ -652,23 +466,20 @@ public class PrunePanel extends VBox {
 
     private void executePrune(List<PruneCandidate> toDelete) {
         pruneBtn.setDisable(true);
-        scanBtn.setDisable(true);
         spinner.setVisible(true);
-        statusLabel.setText("Deleting sessions...");
+        statusLabel.setText("Deleting sessions…");
 
         CompletableFuture.supplyAsync(() -> pruner.delete(toDelete))
                 .thenAccept(result -> Platform.runLater(() -> {
                     spinner.setVisible(false);
-                    scanBtn.setDisable(false);
 
-                    // Remove deleted from table and selection map
+                    // Remove deleted from selection map
                     result.deletedSessionIds().forEach(selectionMap::remove);
                     var remaining = candidates.stream()
                             .filter(c -> !result.deletedSessionIds().contains(c.sessionId()))
                             .toList();
                     candidates = remaining;
-                    table.setItems(FXCollections.observableArrayList(remaining));
-                    rebuildTreeView();
+                    rebuildCards();
 
                     var sb = new StringBuilder();
                     sb.append("Deleted ").append(result.deletedCount()).append(" sessions, freed ")
@@ -728,35 +539,35 @@ public class PrunePanel extends VBox {
         return bytes + " B";
     }
 
-    /** CheckBox cell bound to the per-row selection property, with shift-click range support. */
-    private class CheckBoxCell extends TableCell<PruneCandidate, Boolean> {
+    /** CheckBox cell for card tables with shift-click range support. */
+    private class CardCheckBoxCell extends TableCell<PruneCandidate, Boolean> {
         private final CheckBox checkBox = new CheckBox();
+        private final TableView<PruneCandidate> ownerTable;
         private String boundSessionId;
         private javafx.beans.value.ChangeListener<Boolean> externalListener;
-        private boolean updating; // guard against feedback loops
+        private boolean updating;
 
-        CheckBoxCell() {
+        CardCheckBoxCell(TableView<PruneCandidate> ownerTable) {
+            this.ownerTable = ownerTable;
             setAlignment(Pos.CENTER);
 
-            // Intercept mouse clicks on the checkbox for shift-click range selection
             checkBox.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_PRESSED, event -> {
                 if (boundSessionId == null) return;
                 int myIndex = getIndex();
-                boolean newValue = !checkBox.isSelected(); // what the toggle will become
+                boolean newValue = !checkBox.isSelected();
+                int lastClicked = lastClickedIndexMap.getOrDefault(ownerTable, -1);
 
-                if (event.isShiftDown() && lastClickedIndex >= 0 && lastClickedIndex != myIndex) {
-                    // Shift-click: select/deselect the range
-                    event.consume(); // prevent default toggle
-                    int lo = Math.min(lastClickedIndex, myIndex);
-                    int hi = Math.max(lastClickedIndex, myIndex);
-                    var items = table.getItems();
+                if (event.isShiftDown() && lastClicked >= 0 && lastClicked != myIndex) {
+                    event.consume();
+                    int lo = Math.min(lastClicked, myIndex);
+                    int hi = Math.max(lastClicked, myIndex);
+                    var items = ownerTable.getItems();
                     for (int i = lo; i <= hi && i < items.size(); i++) {
                         getSelectionProperty(items.get(i).sessionId()).set(newValue);
                     }
-                    lastClickedIndex = myIndex;
+                    lastClickedIndexMap.put(ownerTable, myIndex);
                 } else {
-                    // Normal click — let the default toggle happen
-                    lastClickedIndex = myIndex;
+                    lastClickedIndexMap.put(ownerTable, myIndex);
                 }
             });
 
@@ -779,7 +590,6 @@ public class PrunePanel extends VBox {
             var candidate = getTableRow().getItem();
             var sessionId = candidate.sessionId();
 
-            // Only rebind if the row changed
             if (!sessionId.equals(boundSessionId)) {
                 unbind();
                 boundSessionId = sessionId;
@@ -807,115 +617,6 @@ public class PrunePanel extends VBox {
                 }
             }
             boundSessionId = null;
-            externalListener = null;
-        }
-    }
-
-    /** CheckBox cell for the tree table — handles both directory groups and session leaves. */
-    private class TreeCheckBoxCell extends TreeTableCell<Object, String> {
-        private final CheckBox checkBox = new CheckBox();
-        private String boundId;
-        private javafx.beans.value.ChangeListener<Boolean> externalListener;
-        private boolean updating;
-
-        TreeCheckBoxCell() {
-            setAlignment(Pos.CENTER);
-            checkBox.selectedProperty().addListener((obs, old, val) -> {
-                if (updating || boundId == null) return;
-                if (boundId.startsWith("group:")) {
-                    // Group toggle: select/deselect all children
-                    int idx = getIndex();
-                    if (idx >= 0) {
-                        var ti = treeTable.getTreeItem(idx);
-                        if (ti != null) {
-                            for (var child : ti.getChildren()) {
-                                if (child.getValue() instanceof PruneCandidate pc) {
-                                    getSelectionProperty(pc.sessionId()).set(val);
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    getSelectionProperty(boundId).set(val);
-                    // Sync parent directory checkbox
-                    syncParentCheckbox();
-                }
-            });
-        }
-
-        /** Find the parent directory tree item and update its checkbox state. */
-        private void syncParentCheckbox() {
-            int idx = getIndex();
-            if (idx < 0) return;
-            var ti = treeTable.getTreeItem(idx);
-            if (ti == null || ti.getParent() == null) return;
-            var parent = ti.getParent();
-            // Parent is the directory group node — force its cell to refresh
-            if (parent.getValue() instanceof String) {
-                // Trigger a re-evaluation by updating the tree table
-                Platform.runLater(() -> {
-                    // Find all cells for the parent and update them
-                    // The simplest approach: refresh the column to force updateItem
-                    var cols = treeTable.getColumns();
-                    if (!cols.isEmpty()) {
-                        cols.getFirst().setVisible(false);
-                        cols.getFirst().setVisible(true);
-                    }
-                });
-            }
-        }
-
-        @Override
-        protected void updateItem(String idKey, boolean empty) {
-            super.updateItem(idKey, empty);
-            if (empty || idKey == null) {
-                setGraphic(null);
-                unbind();
-                return;
-            }
-
-            if (!idKey.equals(boundId)) {
-                unbind();
-                boundId = idKey;
-
-                if (idKey.startsWith("group:")) {
-                    // Group row: check if all children are selected
-                    int idx = getIndex();
-                    var ti = idx >= 0 ? treeTable.getTreeItem(idx) : null;
-                    updating = true;
-                    boolean allSelected = ti != null && !ti.getChildren().isEmpty()
-                            && ti.getChildren().stream()
-                            .map(TreeItem::getValue)
-                            .filter(PruneCandidate.class::isInstance)
-                            .map(PruneCandidate.class::cast)
-                            .allMatch(pc -> getSelectionProperty(pc.sessionId()).get());
-                    checkBox.setSelected(allSelected);
-                    updating = false;
-                } else {
-                    // Session leaf: bind to selection property
-                    var prop = getSelectionProperty(idKey);
-                    updating = true;
-                    checkBox.setSelected(prop.get());
-                    updating = false;
-                    externalListener = (obs2, old2, val2) -> {
-                        updating = true;
-                        checkBox.setSelected(val2);
-                        updating = false;
-                    };
-                    prop.addListener(externalListener);
-                }
-            }
-            setGraphic(checkBox);
-        }
-
-        private void unbind() {
-            if (boundId != null && !boundId.startsWith("group:") && externalListener != null) {
-                var prop = selectionMap.get(boundId);
-                if (prop != null) {
-                    prop.removeListener(externalListener);
-                }
-            }
-            boundId = null;
             externalListener = null;
         }
     }

@@ -827,3 +827,31 @@
     -fx-text-fill: #666;
     -fx-font-size: 10px;
 }
+
+/* Prune card embedded table — no vertical cell borders */
+.prune-card-table {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 0;
+}
+.prune-card-table .column-header-background {
+    -fx-background-color: transparent;
+}
+.prune-card-table .column-header {
+    -fx-border-color: transparent #3a3a52 transparent transparent;
+    -fx-border-width: 0 1 0 0;
+    -fx-background-color: transparent;
+}
+.prune-card-table .column-header:last-visible {
+    -fx-border-color: transparent;
+}
+.prune-card-table .table-cell {
+    -fx-border-color: #2a2a3e transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+}
+.prune-card-table .table-row-cell {
+    -fx-background-color: transparent;
+}
+.prune-card-table .table-row-cell:hover {
+    -fx-background-color: #2a2a3e;
+}
