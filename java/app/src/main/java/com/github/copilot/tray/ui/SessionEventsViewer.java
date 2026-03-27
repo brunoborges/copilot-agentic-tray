@@ -9,6 +9,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.ProgressIndicator;
+import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -62,7 +63,33 @@ public class SessionEventsViewer {
         statsLabel.getStyleClass().add("events-viewer-stats");
         statsLabel.setPadding(new Insets(0, 8, 4, 8));
 
-        var root = new VBox(header, statsLabel, listView);
+        // --- Navigation & Search toolbar ---
+        var prevUserBtn = new Button("◀ User");
+        var nextUserBtn = new Button("User ▶");
+        var prevAsstBtn = new Button("◀ Assistant");
+        var nextAsstBtn = new Button("Assistant ▶");
+
+        var searchField = new javafx.scene.control.TextField();
+        searchField.setPromptText("Search events…");
+        searchField.setPrefWidth(200);
+        var prevSearchBtn = new Button("◀");
+        var nextSearchBtn = new Button("▶");
+        var searchStatus = new Label();
+        searchStatus.getStyleClass().add("events-viewer-stats");
+
+        // Disable nav buttons until events load
+        prevUserBtn.setDisable(true); nextUserBtn.setDisable(true);
+        prevAsstBtn.setDisable(true); nextAsstBtn.setDisable(true);
+        prevSearchBtn.setDisable(true); nextSearchBtn.setDisable(true);
+
+        var navSep = new javafx.scene.control.Separator(javafx.geometry.Orientation.VERTICAL);
+        var toolbar = new HBox(6, prevUserBtn, nextUserBtn, prevAsstBtn, nextAsstBtn,
+                navSep, searchField, prevSearchBtn, nextSearchBtn, searchStatus);
+        toolbar.setAlignment(Pos.CENTER_LEFT);
+        toolbar.setPadding(new Insets(6, 8, 6, 8));
+        toolbar.getStyleClass().add("events-viewer-toolbar");
+
+        var root = new VBox(header, statsLabel, listView, toolbar);
         VBox.setVgrow(listView, Priority.ALWAYS);
 
         stage = new Stage();
@@ -90,6 +117,78 @@ public class SessionEventsViewer {
                 listView.getItems().addAll(events);
                 statsLabel.setText(stats);
                 listView.setPlaceholder(placeholder);
+
+                // Build role indices for navigation
+                var userIndices = new ArrayList<Integer>();
+                var asstIndices = new ArrayList<Integer>();
+                for (int i = 0; i < events.size(); i++) {
+                    if (events.get(i).role() == ParsedEvent.Role.USER) userIndices.add(i);
+                    else if (events.get(i).role() == ParsedEvent.Role.ASSISTANT) asstIndices.add(i);
+                }
+
+                prevUserBtn.setDisable(userIndices.isEmpty());
+                nextUserBtn.setDisable(userIndices.isEmpty());
+                prevAsstBtn.setDisable(asstIndices.isEmpty());
+                nextAsstBtn.setDisable(asstIndices.isEmpty());
+
+                // Navigation: next/prev by role
+                nextUserBtn.setOnAction(e -> navigateToNext(listView, userIndices, true));
+                prevUserBtn.setOnAction(e -> navigateToNext(listView, userIndices, false));
+                nextAsstBtn.setOnAction(e -> navigateToNext(listView, asstIndices, true));
+                prevAsstBtn.setOnAction(e -> navigateToNext(listView, asstIndices, false));
+
+                // Search
+                var searchMatches = new ArrayList<Integer>();
+                final int[] searchIdx = {-1};
+
+                Runnable doSearch = () -> {
+                    var query = searchField.getText().trim().toLowerCase();
+                    searchMatches.clear();
+                    searchIdx[0] = -1;
+                    if (query.isEmpty()) {
+                        searchStatus.setText("");
+                        prevSearchBtn.setDisable(true);
+                        nextSearchBtn.setDisable(true);
+                        return;
+                    }
+                    for (int i = 0; i < events.size(); i++) {
+                        var ev = events.get(i);
+                        if (ev.content().toLowerCase().contains(query)
+                                || ev.type().toLowerCase().contains(query)) {
+                            searchMatches.add(i);
+                        }
+                    }
+                    if (searchMatches.isEmpty()) {
+                        searchStatus.setText("No matches");
+                        prevSearchBtn.setDisable(true);
+                        nextSearchBtn.setDisable(true);
+                    } else {
+                        searchIdx[0] = 0;
+                        listView.scrollTo(searchMatches.get(0));
+                        listView.getSelectionModel().select(searchMatches.get(0));
+                        searchStatus.setText("1 / " + searchMatches.size());
+                        prevSearchBtn.setDisable(false);
+                        nextSearchBtn.setDisable(false);
+                    }
+                };
+
+                searchField.setOnAction(e -> doSearch.run());
+
+                nextSearchBtn.setOnAction(e -> {
+                    if (searchMatches.isEmpty()) return;
+                    searchIdx[0] = (searchIdx[0] + 1) % searchMatches.size();
+                    listView.scrollTo(searchMatches.get(searchIdx[0]));
+                    listView.getSelectionModel().select(searchMatches.get(searchIdx[0]));
+                    searchStatus.setText((searchIdx[0] + 1) + " / " + searchMatches.size());
+                });
+
+                prevSearchBtn.setOnAction(e -> {
+                    if (searchMatches.isEmpty()) return;
+                    searchIdx[0] = (searchIdx[0] - 1 + searchMatches.size()) % searchMatches.size();
+                    listView.scrollTo(searchMatches.get(searchIdx[0]));
+                    listView.getSelectionModel().select(searchMatches.get(searchIdx[0]));
+                    searchStatus.setText((searchIdx[0] + 1) + " / " + searchMatches.size());
+                });
             });
         });
     }
@@ -97,6 +196,20 @@ public class SessionEventsViewer {
     public void show() {
         stage.show();
         stage.toFront();
+    }
+
+    /** Navigate to next/prev occurrence of a role in the list. */
+    private void navigateToNext(ListView<ParsedEvent> listView, List<Integer> indices, boolean forward) {
+        if (indices.isEmpty()) return;
+        int current = listView.getSelectionModel().getSelectedIndex();
+        int target;
+        if (forward) {
+            target = indices.stream().filter(i -> i > current).findFirst().orElse(indices.getFirst());
+        } else {
+            target = indices.reversed().stream().filter(i -> i < current).findFirst().orElse(indices.getLast());
+        }
+        listView.scrollTo(target);
+        listView.getSelectionModel().select(target);
     }
 
     // =====================================================================

@@ -793,10 +793,15 @@
     -fx-padding: 2 0;
 }
 .events-viewer-list .list-cell:selected {
-    -fx-background-color: transparent;
+    -fx-background-color: #2a2a4e;
 }
 .events-viewer-list .list-cell:focused {
     -fx-background-color: transparent;
+}
+.events-viewer-toolbar {
+    -fx-background-color: #1e1e2e;
+    -fx-border-color: #3a3a52 transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
 }
 
 .events-bubble-user {
