@@ -154,9 +154,12 @@ public class UsageTilesPane extends VBox {
         aggregateRow.setPadding(new Insets(6, 8, 6, 8));
         aggregateRow.getStyleClass().add("aggregate-row");
 
+        var contextBreakdownLabel = sectionLabel("Context Breakdown");
+        VBox.setMargin(contextBreakdownLabel, new Insets(15, 0, 0, 0));
+
         var tilesPane = new VBox(6,
                 sectionLabel("Selected Session(s)"), detailRow,
-                sectionLabel("Context Breakdown"), breakdownRow);
+                contextBreakdownLabel, breakdownRow);
 
         getChildren().add(tilesPane);
         getStyleClass().add("usage-tiles-pane");
