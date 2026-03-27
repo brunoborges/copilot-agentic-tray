@@ -222,15 +222,16 @@ public class PrunePanel extends VBox {
 
         // Actions column
         var actionsCol = new TableColumn<PruneCandidate, Void>("Actions");
-        actionsCol.setPrefWidth(100);
+        actionsCol.setPrefWidth(60);
         actionsCol.setSortable(false);
         actionsCol.setCellFactory(col -> new TableCell<>() {
-            private final MenuButton menuBtn = new MenuButton("Actions");
+            private final MenuButton menuBtn = new MenuButton("\u22EE");
             private final MenuItem resumeItem = new MenuItem("Resume");
             private final MenuItem viewEventsItem = new MenuItem("View Events");
             private final MenuItem deleteItem = new MenuItem("Delete");
             {
                 menuBtn.getStyleClass().add("prune-small-btn");
+                menuBtn.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
                 menuBtn.getItems().addAll(resumeItem, viewEventsItem, new SeparatorMenuItem(), deleteItem);
                 resumeItem.setOnAction(e -> {
                     var item = getTableRow().getItem();
@@ -414,7 +415,7 @@ public class PrunePanel extends VBox {
 
         // Actions — typed as String (sessionId) so updateItem fires reliably on cell reuse
         var actionsCol = new TreeTableColumn<Object, String>("Actions");
-        actionsCol.setPrefWidth(100);
+        actionsCol.setPrefWidth(60);
         actionsCol.setSortable(false);
         actionsCol.setCellValueFactory(cd -> {
             if (cd.getValue().getValue() instanceof PruneCandidate pc) {
@@ -423,12 +424,13 @@ public class PrunePanel extends VBox {
             return new SimpleStringProperty(null);
         });
         actionsCol.setCellFactory(col -> new TreeTableCell<>() {
-            private final MenuButton menuBtn = new MenuButton("Actions");
+            private final MenuButton menuBtn = new MenuButton("\u22EE");
             private final MenuItem resumeItem = new MenuItem("Resume");
             private final MenuItem viewEventsItem = new MenuItem("View Events");
             private final MenuItem deleteItem = new MenuItem("Delete");
             {
                 menuBtn.getStyleClass().add("prune-small-btn");
+                menuBtn.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
                 menuBtn.getItems().addAll(resumeItem, viewEventsItem, new SeparatorMenuItem(), deleteItem);
             }
 
