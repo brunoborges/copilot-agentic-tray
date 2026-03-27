@@ -912,6 +912,10 @@
     -fx-background-color: transparent;
     -fx-border-color: transparent;
 }
+.events-viewer-list > .virtual-flow > .scroll-bar:horizontal {
+    -fx-pref-height: 0;
+    -fx-max-height: 0;
+}
 .events-viewer-list > .virtual-flow > .scroll-bar:vertical {
     -fx-background-color: #e8e8f0;
     -fx-pref-width: 12;

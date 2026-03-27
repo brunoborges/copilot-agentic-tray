@@ -49,6 +49,10 @@ public class SessionEventsViewer {
             var cell = new EventCell();
             cell.setCache(true);
             cell.setCacheHint(javafx.scene.CacheHint.SPEED);
+            // Constrain cell width to ListView viewport to prevent horizontal overflow
+            cell.prefWidthProperty().bind(listView.widthProperty().subtract(20));
+            cell.setMaxWidth(Control.USE_PREF_SIZE);
+            cell.setWrapText(true);
             return cell;
         });
         listView.getStyleClass().add("events-viewer-list");
