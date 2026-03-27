@@ -62,7 +62,7 @@ public class SettingsWindow {
     private VBox detailPane;
     private UsageTilesPane usageTilesPane;
     private HBox actionBar;
-    private Button newSessionBtn, resumeBtn, attachBtn, renameBtn, deleteBtn, viewEventsBtn;
+    private Button newSessionBtn, resumeBtn, attachBtn, renameBtn, deleteBtn, viewEventsBtn, compactBtn;
     // Remote-specific action buttons
     private Button viewLogsBtn, openBrowserBtn, openPrBtn, openRepoBtn;
     private SessionSnapshot selectedSession;
@@ -491,7 +491,29 @@ public class SettingsWindow {
             viewer.show();
         });
 
-        actionBar = new HBox(8, newSessionBtn, resumeBtn, attachBtn, viewEventsBtn, renameBtn, deleteBtn, deleteProgress,
+        compactBtn = new Button("Compact");
+        compactBtn.setDisable(true);
+        compactBtn.setOnAction(e -> {
+            if (selectedSession == null) return;
+            var sid = selectedSession.id();
+            compactBtn.setDisable(true);
+            compactBtn.setText("Compacting…");
+            sdkBridge.compactSession(sid)
+                    .thenRun(() -> Platform.runLater(() -> {
+                        compactBtn.setText("Compact");
+                        compactBtn.setDisable(false);
+                    }))
+                    .exceptionally(ex -> {
+                        LOG.warn("Compaction failed for {}", sid, ex);
+                        Platform.runLater(() -> {
+                            compactBtn.setText("Compact");
+                            compactBtn.setDisable(false);
+                        });
+                        return null;
+                    });
+        });
+
+        actionBar = new HBox(8, newSessionBtn, resumeBtn, attachBtn, viewEventsBtn, compactBtn, renameBtn, deleteBtn, deleteProgress,
                 openRepoBtn, openPrBtn, openBrowserBtn, viewLogsBtn);
         actionBar.setAlignment(Pos.CENTER_LEFT);
         actionBar.getStyleClass().addAll("action-bar", "sessions-card");
@@ -646,6 +668,7 @@ public class SettingsWindow {
             private final MenuButton menuBtn = new MenuButton("\u22EE");
             private final MenuItem resumeItem = new MenuItem("Resume");
             private final MenuItem viewEventsItem = new MenuItem("View Events");
+            private final MenuItem compactItem = new MenuItem("Compact");
             private final MenuItem copyIdItem = new MenuItem("Copy ID");
             private final MenuItem deleteItem = new MenuItem("Delete");
             {
@@ -655,7 +678,7 @@ public class SettingsWindow {
                 menuBtn.setMinSize(28, 28);
                 menuBtn.setMaxSize(28, 28);
                 setAlignment(Pos.CENTER);
-                menuBtn.getItems().addAll(resumeItem, viewEventsItem, copyIdItem,
+                menuBtn.getItems().addAll(resumeItem, viewEventsItem, compactItem, copyIdItem,
                         new SeparatorMenuItem(), deleteItem);
                 resumeItem.setOnAction(e -> {
                     var item = getTableRow().getItem();
@@ -666,6 +689,19 @@ public class SettingsWindow {
                     if (item != null) {
                         new SessionEventsViewer(item.id(), item.name(),
                                 themeManager, stage).show();
+                    }
+                });
+                compactItem.setOnAction(e -> {
+                    var item = getTableRow().getItem();
+                    if (item != null) {
+                        compactItem.setDisable(true);
+                        compactItem.setText("Compacting…");
+                        sdkBridge.compactSession(item.id())
+                                .whenComplete((v, ex) -> Platform.runLater(() -> {
+                                    compactItem.setText("Compact");
+                                    compactItem.setDisable(false);
+                                    if (ex != null) LOG.warn("Compaction failed for {}", item.id(), ex);
+                                }));
                     }
                 });
                 copyIdItem.setOnAction(e -> {
@@ -910,6 +946,8 @@ public class SettingsWindow {
         attachBtn.setManaged(!remote);
         viewEventsBtn.setVisible(!remote);
         viewEventsBtn.setManaged(!remote);
+        compactBtn.setVisible(!remote);
+        compactBtn.setManaged(!remote);
         renameBtn.setVisible(!remote);
         renameBtn.setManaged(!remote);
         deleteBtn.setVisible(!remote);
@@ -917,6 +955,7 @@ public class SettingsWindow {
         resumeBtn.setDisable(none || multi);
         attachBtn.setDisable(none || multi);
         viewEventsBtn.setDisable(none || multi);
+        compactBtn.setDisable(none || multi);
         renameBtn.setDisable(none || multi);
         deleteBtn.setDisable(none);
         deleteBtn.setText(none || selectionCount == 1 ? "Delete" : "Delete (" + selectionCount + ")");

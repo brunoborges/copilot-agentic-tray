@@ -134,6 +134,29 @@ public class SdkBridge {
         return CompletableFuture.completedFuture(null);
     }
 
+    /**
+     * Compact a session's context window to free up token space.
+     * If the session is already attached, compacts it directly.
+     * Otherwise, temporarily connects, compacts, then disconnects.
+     */
+    public CompletableFuture<Void> compactSession(String sessionId) {
+        if (client == null || !connected) {
+            return CompletableFuture.failedFuture(
+                    new IllegalStateException("SDK not connected"));
+        }
+        var session = attachedSessions.get(sessionId);
+        if (session != null) {
+            return session.compact();
+        }
+        // Temporarily attach, compact, then close
+        var config = new ResumeSessionConfig()
+                .setOnPermissionRequest(PermissionHandler.APPROVE_ALL);
+        return client.resumeSession(sessionId, config)
+                .thenCompose(s -> s.compact().whenComplete((v, ex) -> {
+                    try { s.close(); } catch (Exception ignored) {}
+                }));
+    }
+
     public void detachSession(String sessionId) {
         var session = attachedSessions.remove(sessionId);
         if (session != null) {
