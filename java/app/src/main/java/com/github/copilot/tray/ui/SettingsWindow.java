@@ -528,7 +528,9 @@ public class SettingsWindow {
         bottomPane.getStyleClass().add("sessions-section");
 
         // Right side: table on top, detail below, action bar pinned at bottom
-        rightBox = new VBox(topPane, bottomPane, actionPane);
+        actionPane.getStyleClass().add("sessions-section");
+        rightBox = new VBox(8, topPane, bottomPane, actionPane);
+        rightBox.setPadding(new Insets(8, 0, 8, 0));
 
         var split = new SplitPane(leftBox, rightBox);
         split.setDividerPositions(0.20);
