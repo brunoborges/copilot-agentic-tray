@@ -163,8 +163,20 @@ public class SessionEventsViewer {
                     }
                     for (int i = 0; i < events.size(); i++) {
                         var ev = events.get(i);
-                        if (ev.content().toLowerCase().contains(query)
-                                || ev.type().toLowerCase().contains(query)) {
+                        var lower = ev.content().toLowerCase();
+                        var typeLower = ev.type().toLowerCase();
+                        int count = 0;
+                        int pos = 0;
+                        while ((pos = lower.indexOf(query, pos)) >= 0) {
+                            count++;
+                            pos += query.length();
+                        }
+                        pos = 0;
+                        while ((pos = typeLower.indexOf(query, pos)) >= 0) {
+                            count++;
+                            pos += query.length();
+                        }
+                        for (int c = 0; c < count; c++) {
                             searchMatches.add(i);
                         }
                     }

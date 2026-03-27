@@ -788,27 +788,31 @@
     -fx-background-color: transparent;
     -fx-border-color: transparent;
 }
-.events-viewer-list .scroll-bar:vertical {
-    -fx-background-color: transparent;
-    -fx-pref-width: 10;
+.events-viewer-list > .virtual-flow > .scroll-bar:vertical {
+    -fx-background-color: #2a2a3e;
+    -fx-pref-width: 12;
+    -fx-min-width: 12;
 }
-.events-viewer-list .scroll-bar:vertical .track {
-    -fx-background-color: transparent;
+.events-viewer-list > .virtual-flow > .scroll-bar:vertical .track {
+    -fx-background-color: #2a2a3e;
+    -fx-background-radius: 0;
 }
-.events-viewer-list .scroll-bar:vertical .thumb {
-    -fx-background-color: #4a4a6a;
-    -fx-background-radius: 5;
+.events-viewer-list > .virtual-flow > .scroll-bar:vertical .thumb {
+    -fx-background-color: #5a5a7a;
+    -fx-background-radius: 6;
+    -fx-background-insets: 2;
 }
-.events-viewer-list .scroll-bar:vertical .thumb:hover {
-    -fx-background-color: #6a6a8a;
+.events-viewer-list > .virtual-flow > .scroll-bar:vertical .thumb:hover {
+    -fx-background-color: #7a7a9a;
 }
-.events-viewer-list .scroll-bar:vertical .increment-button,
-.events-viewer-list .scroll-bar:vertical .decrement-button {
+.events-viewer-list > .virtual-flow > .scroll-bar:vertical .increment-button,
+.events-viewer-list > .virtual-flow > .scroll-bar:vertical .decrement-button {
     -fx-pref-height: 0;
     -fx-max-height: 0;
+    -fx-padding: 0;
 }
-.events-viewer-list .scroll-bar:vertical .increment-arrow,
-.events-viewer-list .scroll-bar:vertical .decrement-arrow {
+.events-viewer-list > .virtual-flow > .scroll-bar:vertical .increment-arrow,
+.events-viewer-list > .virtual-flow > .scroll-bar:vertical .decrement-arrow {
     -fx-shape: "";
     -fx-padding: 0;
 }
