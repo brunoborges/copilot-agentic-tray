@@ -501,13 +501,21 @@ public class SettingsWindow {
             sdkBridge.compactSession(sid)
                     .thenRun(() -> Platform.runLater(() -> {
                         compactBtn.setText("Compact");
-                        compactBtn.setDisable(false);
+                        updateActionButtons(sessionTable.getSelectionModel().getSelectedItems().size());
                     }))
                     .exceptionally(ex -> {
                         LOG.warn("Compaction failed for {}", sid, ex);
                         Platform.runLater(() -> {
                             compactBtn.setText("Compact");
-                            compactBtn.setDisable(false);
+                            updateActionButtons(sessionTable.getSelectionModel().getSelectedItems().size());
+                            var msg = ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage();
+                            var alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.WARNING);
+                            alert.setTitle("Compaction Failed");
+                            alert.setHeaderText(null);
+                            alert.setContentText(msg);
+                            alert.initOwner(stage);
+                            themeManager.register(alert.getDialogPane().getScene());
+                            alert.showAndWait();
                         });
                         return null;
                     });
@@ -700,7 +708,17 @@ public class SettingsWindow {
                                 .whenComplete((v, ex) -> Platform.runLater(() -> {
                                     compactItem.setText("Compact");
                                     compactItem.setDisable(false);
-                                    if (ex != null) LOG.warn("Compaction failed for {}", item.id(), ex);
+                                    if (ex != null) {
+                                        LOG.warn("Compaction failed for {}", item.id(), ex);
+                                        var msg = ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage();
+                                        var alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.WARNING);
+                                        alert.setTitle("Compaction Failed");
+                                        alert.setHeaderText(null);
+                                        alert.setContentText(msg);
+                                        alert.initOwner(stage);
+                                        themeManager.register(alert.getDialogPane().getScene());
+                                        alert.showAndWait();
+                                    }
                                 }));
                     }
                 });
@@ -933,6 +951,13 @@ public class SettingsWindow {
         return "remote".equals(locationToggle.getSelectedToggle().getUserData());
     }
 
+    private boolean isSessionCompactable() {
+        if (selectedSession == null) return false;
+        var status = selectedSession.status();
+        return status == com.github.copilot.tray.session.SessionStatus.ACTIVE
+                || status == com.github.copilot.tray.session.SessionStatus.BUSY;
+    }
+
     private void updateActionButtons(int selectionCount) {
         boolean none = selectionCount == 0;
         boolean multi = selectionCount > 1;
@@ -955,7 +980,7 @@ public class SettingsWindow {
         resumeBtn.setDisable(none || multi);
         attachBtn.setDisable(none || multi);
         viewEventsBtn.setDisable(none || multi);
-        compactBtn.setDisable(none || multi);
+        compactBtn.setDisable(none || multi || !isSessionCompactable());
         renameBtn.setDisable(none || multi);
         deleteBtn.setDisable(none);
         deleteBtn.setText(none || selectionCount == 1 ? "Delete" : "Delete (" + selectionCount + ")");
